@@ -5,20 +5,17 @@ interface LearningConfig {
   grade: string;
   subject: string;
   learningObjective: string;
-  knowledgeId: string;
 }
 
 interface LearningSetupProps {
   config: LearningConfig;
   onConfigChange: (config: LearningConfig) => void;
-  knowledgeData?: any[];
   uniqueObjectives?: string[];
 }
 
 export default function LearningSetup({
   config,
   onConfigChange,
-  knowledgeData = [],
   uniqueObjectives = [],
 }: LearningSetupProps) {
   const handleChange = (field: keyof LearningConfig, value: string) => {
@@ -127,30 +124,6 @@ export default function LearningSetup({
             </select>
             <p className="text-xs text-gray-500 mt-1">
               선생님이 설정한 학습 목표 중에서 선택하세요
-            </p>
-          </div>
-          <div>
-            <label
-              htmlFor="knowledge-select"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              참고 자료 선택
-            </label>
-            <select
-              id="knowledge-select"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              value={config.knowledgeId}
-              onChange={(e) => handleChange("knowledgeId", e.target.value)}
-            >
-              <option value="">참고 자료 없음</option>
-              {knowledgeData.map((knowledge: any) => (
-                <option key={knowledge.id || knowledge.__backendId} value={knowledge.id || knowledge.__backendId}>
-                  {knowledge.knowledge_title}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-gray-500 mt-1">
-              선생님이 업로드한 학습 자료를 선택하세요
             </p>
           </div>
         </form>

@@ -7,13 +7,11 @@ interface LearningConfig {
   grade: string;
   subject: string;
   learningObjective: string;
-  knowledgeId: string;
 }
 
 interface ChatInterfaceProps {
   learningConfig: LearningConfig;
   onConversationCreate: (conversation: any) => Promise<void>;
-  knowledgeData?: any[];
 }
 
 interface Message {
@@ -24,7 +22,6 @@ interface Message {
 export default function ChatInterface({
   learningConfig,
   onConversationCreate,
-  knowledgeData = [],
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -98,21 +95,7 @@ export default function ChatInterface({
     setQuestion("");
 
     try {
-      // Get knowledge context if selected
-      let knowledgeContext = null;
-      let knowledgeTitle = null;
-      
-      if (learningConfig.knowledgeId) {
-        const knowledgeItem = knowledgeData.find(
-          (item: any) => (item.id || item.__backendId) === learningConfig.knowledgeId
-        );
-        if (knowledgeItem) {
-          knowledgeContext = knowledgeItem.knowledge_content;
-          knowledgeTitle = knowledgeItem.knowledge_title;
-        }
-      }
-
-      // Gemini API 호출
+      // Gemini API 호출 (참고 자료 컨텍스트 제거)
       const response = await fetch("/api/gemini", {
         method: "POST",
         headers: {
@@ -123,7 +106,6 @@ export default function ChatInterface({
           subject: learningConfig.subject,
           grade: learningConfig.grade,
           learningObjective: learningConfig.learningObjective,
-          knowledgeContext,
         }),
       });
 
@@ -145,7 +127,7 @@ export default function ChatInterface({
         ai_response: aiResponse,
         safety_status: safetyCheck.reason,
         teacher_approved: false,
-        knowledge_title: knowledgeTitle || "",
+        knowledge_title: "",
         timestamp: new Date().toISOString(),
       });
     } catch (error) {

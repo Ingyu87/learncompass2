@@ -4,8 +4,7 @@ export async function generateAIResponse(
   question: string,
   subject: string,
   grade: string,
-  learningObjective: string,
-  knowledgeContext?: string | null
+  learningObjective: string
 ): Promise<string> {
   try {
     const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
@@ -17,17 +16,13 @@ export async function generateAIResponse(
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
-    let prompt = `당신은 초등학교 ${grade} 학생을 위한 친절한 AI 학습 도우미입니다.
+    const prompt = `당신은 초등학교 ${grade} 학생을 위한 친절한 AI 학습 도우미입니다.
 과목: ${subject}
 학습 목표: ${learningObjective}
 
-학생의 질문: ${question}`;
+학생의 질문: ${question}
 
-    if (knowledgeContext) {
-      prompt += `\n\n참고 자료:\n${knowledgeContext}\n\n위 참고 자료를 바탕으로 답변해주세요.`;
-    }
-
-    prompt += `\n\n위 정보를 바탕으로 학생의 질문에 대해 교육적이고 이해하기 쉬운 답변을 해주세요.
+위 정보를 바탕으로 학생의 질문에 대해 교육적이고 이해하기 쉬운 답변을 해주세요.
 - 초등학생 수준에 맞는 쉬운 언어를 사용하세요
 - 긍정적이고 격려하는 톤으로 답변하세요
 - 학습 목표와 관련된 내용을 중심으로 답변하세요

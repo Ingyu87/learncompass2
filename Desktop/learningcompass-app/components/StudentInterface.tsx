@@ -12,7 +12,6 @@ export default function StudentInterface() {
     grade: "",
     subject: "",
     learningObjective: "",
-    knowledgeId: "",
   });
 
   // Get knowledge data for dropdown
@@ -31,7 +30,6 @@ export default function StudentInterface() {
         <LearningSetup
           config={learningConfig}
           onConfigChange={setLearningConfig}
-          knowledgeData={knowledgeData}
           uniqueObjectives={uniqueObjectives}
         />
       </div>
@@ -39,7 +37,6 @@ export default function StudentInterface() {
         <ChatInterface
           learningConfig={learningConfig}
           onConversationCreate={addConversation}
-          knowledgeData={knowledgeData}
         />
       </div>
     </div>

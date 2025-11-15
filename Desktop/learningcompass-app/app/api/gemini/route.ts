@@ -4,7 +4,7 @@ import { generateAIResponse } from "@/lib/gemini";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { question, subject, grade, learningObjective, knowledgeContext } = body;
+    const { question, subject, grade, learningObjective } = body;
 
     if (!question || !subject || !grade || !learningObjective) {
       return NextResponse.json(
@@ -17,8 +17,7 @@ export async function POST(request: NextRequest) {
       question,
       subject,
       grade,
-      learningObjective,
-      knowledgeContext
+      learningObjective
     );
 
     return NextResponse.json({ response });
