@@ -1,14 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import LearningSetup from "@/components/LearningSetup";
 import ChatInterface from "@/components/ChatInterface";
 import { useFirebase } from "@/hooks/useFirebase";
-import {
-  loadCurriculumData,
-  getStandardsBySubjectGradeAndArea,
-  type CurriculumStandard,
-} from "@/lib/curriculum";
+// 학생은 성취기준에 접근하지 않으므로 import 제거
 
 export default function StudentInterface() {
   const { conversations, addConversation } = useFirebase();
@@ -54,43 +50,7 @@ export default function StudentInterface() {
     ),
   ];
 
-  // 성취기준 데이터
-  const [curriculumStandards, setCurriculumStandards] = useState<CurriculumStandard[]>([]);
-  const [availableAreas, setAvailableAreas] = useState<string[]>([]);
-  const [selectedArea, setSelectedArea] = useState<string>("");
-
-  useEffect(() => {
-    const loadStandards = async () => {
-      if (learningConfig.grade && learningConfig.subject) {
-        try {
-          const standards = await getStandardsBySubjectGradeAndArea(
-            learningConfig.subject,
-            learningConfig.grade,
-            selectedArea || undefined
-          );
-          setCurriculumStandards(standards);
-          
-          // 영역 목록 추출
-          const areas = [...new Set(standards.map((s) => s.영역))].sort();
-          setAvailableAreas(areas);
-        } catch (error) {
-          console.error("성취기준 로드 오류:", error);
-        }
-      } else {
-        setCurriculumStandards([]);
-        setAvailableAreas([]);
-      }
-    };
-
-    loadStandards();
-  }, [learningConfig.grade, learningConfig.subject, selectedArea]);
-
-  // 영역 변경 시 학습 목표 초기화
-  useEffect(() => {
-    if (selectedArea) {
-      setLearningConfig({ ...learningConfig, learningObjective: "" });
-    }
-  }, [selectedArea]);
+  // 학생은 성취기준에 접근하지 못함 - 교사가 제시한 학습목표만 사용
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -101,10 +61,10 @@ export default function StudentInterface() {
           uniqueObjectives={uniqueObjectives}
           availableGrades={availableGrades}
           availableSubjects={availableSubjects}
-          curriculumStandards={curriculumStandards}
-          availableAreas={availableAreas}
-          selectedArea={selectedArea}
-          onAreaChange={setSelectedArea}
+          // 학생은 성취기준에 접근하지 못하게 함 - 교사가 제시한 학습목표만 선택 가능
+          curriculumStandards={[]}
+          availableAreas={[]}
+          selectedArea=""
         />
       </div>
       <div className="lg:col-span-2">
