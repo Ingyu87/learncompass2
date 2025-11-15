@@ -1,0 +1,33 @@
+import { NextRequest, NextResponse } from "next/server";
+import { generateAIResponse } from "@/lib/gemini";
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { question, subject, grade, learningObjective, knowledgeContext } = body;
+
+    if (!question || !subject || !grade || !learningObjective) {
+      return NextResponse.json(
+        { error: "필수 파라미터가 누락되었습니다." },
+        { status: 400 }
+      );
+    }
+
+    const response = await generateAIResponse(
+      question,
+      subject,
+      grade,
+      learningObjective,
+      knowledgeContext
+    );
+
+    return NextResponse.json({ response });
+  } catch (error: any) {
+    console.error("Gemini API 오류:", error);
+    return NextResponse.json(
+      { error: error.message || "AI 응답 생성 중 오류가 발생했습니다." },
+      { status: 500 }
+    );
+  }
+}
+
