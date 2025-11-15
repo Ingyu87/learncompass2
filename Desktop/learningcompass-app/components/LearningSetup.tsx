@@ -1,5 +1,7 @@
 "use client";
 
+import { CurriculumStandard } from "@/lib/curriculum";
+
 interface LearningConfig {
   studentNumber: string;
   grade: string;
@@ -13,6 +15,10 @@ interface LearningSetupProps {
   uniqueObjectives?: string[];
   availableGrades?: string[];
   availableSubjects?: string[];
+  curriculumStandards?: CurriculumStandard[];
+  availableAreas?: string[];
+  selectedArea?: string;
+  onAreaChange?: (area: string) => void;
 }
 
 export default function LearningSetup({
@@ -21,6 +27,10 @@ export default function LearningSetup({
   uniqueObjectives = [],
   availableGrades = [],
   availableSubjects = [],
+  curriculumStandards = [],
+  availableAreas = [],
+  selectedArea = "",
+  onAreaChange,
 }: LearningSetupProps) {
   const handleChange = (field: keyof LearningConfig, value: string) => {
     onConfigChange({
@@ -159,6 +169,34 @@ export default function LearningSetup({
               </p>
             )}
           </div>
+          {config.grade && config.subject && availableAreas.length > 0 && (
+            <div>
+              <label
+                htmlFor="area-select"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                영역 (선택사항)
+              </label>
+              <select
+                id="area-select"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                value={selectedArea}
+                onChange={(e) => {
+                  if (onAreaChange) {
+                    onAreaChange(e.target.value);
+                  }
+                  onConfigChange({ ...config, learningObjective: "" });
+                }}
+              >
+                <option value="">전체 영역</option>
+                {availableAreas.map((area) => (
+                  <option key={area} value={area}>
+                    {area}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div>
             <label
               htmlFor="learning-objective-select"
@@ -173,15 +211,44 @@ export default function LearningSetup({
               onChange={(e) => handleChange("learningObjective", e.target.value)}
             >
               <option value="">학습 목표를 선택하세요</option>
-              {uniqueObjectives.map((objective) => (
-                <option key={objective} value={objective}>
-                  {objective}
-                </option>
-              ))}
+              {/* 성취기준 옵션 */}
+              {curriculumStandards.length > 0 && (
+                <optgroup label="2022개정교육과정 성취기준">
+                  {curriculumStandards.map((standard, index) => (
+                    <option key={`curriculum-${index}`} value={standard.성취기준}>
+                      {standard.성취기준}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {/* 교사가 업로드한 학습 목표 */}
+              {uniqueObjectives.length > 0 && (
+                <optgroup label="선생님이 설정한 학습 목표">
+                  {uniqueObjectives.map((objective) => (
+                    <option key={objective} value={objective}>
+                      {objective}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </select>
             <p className="text-xs text-gray-500 mt-1">
-              선생님이 설정한 학습 목표 중에서 선택하세요
+              {curriculumStandards.length > 0
+                ? "2022개정교육과정 성취기준 또는 선생님이 설정한 학습 목표 중에서 선택하세요"
+                : "선생님이 설정한 학습 목표 중에서 선택하세요"}
             </p>
+            {config.learningObjective && curriculumStandards.find(
+              (s) => s.성취기준 === config.learningObjective
+            )?.["성취기준 해설"] && (
+              <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
+                <strong>성취기준 해설:</strong>{" "}
+                {
+                  curriculumStandards.find(
+                    (s) => s.성취기준 === config.learningObjective
+                  )?.["성취기준 해설"]
+                }
+              </div>
+            )}
           </div>
         </form>
       </div>

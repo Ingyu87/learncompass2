@@ -32,8 +32,6 @@ export interface Conversation {
   file_name?: string;
   content_type?: string;
   upload_date?: string | Date | Timestamp;
-  grade?: string;
-  subject?: string;
 }
 
 export function useFirebase() {

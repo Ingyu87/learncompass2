@@ -1,7 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useFirebase } from "@/hooks/useFirebase";
+import {
+  loadCurriculumData,
+  getStandardsBySubjectGradeAndArea,
+  type CurriculumStandard,
+} from "@/lib/curriculum";
 
 export default function KnowledgeManagement({ conversations }: { conversations: any[] }) {
   const { addConversation, deleteConversation } = useFirebase();
@@ -15,8 +20,57 @@ export default function KnowledgeManagement({ conversations }: { conversations: 
     content: "",
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [availableStandards, setAvailableStandards] = useState<CurriculumStandard[]>([]);
+  const [selectedArea, setSelectedArea] = useState<string>("");
+  const [availableAreas, setAvailableAreas] = useState<string[]>([]);
 
   const knowledgeData = conversations.filter((item: any) => item.type === "knowledge");
+
+  // 성취기준 데이터 로드 및 필터링
+  useEffect(() => {
+    const loadStandards = async () => {
+      if (formData.grade && formData.subject) {
+        try {
+          const standards = await getStandardsBySubjectGradeAndArea(
+            formData.subject,
+            formData.grade
+          );
+          setAvailableStandards(standards);
+          
+          // 영역 목록 추출
+          const areas = [...new Set(standards.map((s) => s.영역))].sort();
+          setAvailableAreas(areas);
+        } catch (error) {
+          console.error("성취기준 로드 오류:", error);
+        }
+      } else {
+        setAvailableStandards([]);
+        setAvailableAreas([]);
+      }
+    };
+
+    loadStandards();
+  }, [formData.grade, formData.subject]);
+
+  // 영역 선택 시 성취기준 필터링
+  useEffect(() => {
+    const loadFilteredStandards = async () => {
+      if (formData.grade && formData.subject) {
+        try {
+          const standards = await getStandardsBySubjectGradeAndArea(
+            formData.subject,
+            formData.grade,
+            selectedArea || undefined
+          );
+          setAvailableStandards(standards);
+        } catch (error) {
+          console.error("성취기준 필터링 오류:", error);
+        }
+      }
+    };
+
+    loadFilteredStandards();
+  }, [formData.grade, formData.subject, selectedArea]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -218,23 +272,85 @@ export default function KnowledgeManagement({ conversations }: { conversations: 
               <option value="체육">체육</option>
             </select>
           </div>
+          {formData.grade && formData.subject && (
+            <div>
+              <label
+                htmlFor="knowledge-area"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                영역 (선택사항)
+              </label>
+              <select
+                id="knowledge-area"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                value={selectedArea}
+                onChange={(e) => {
+                  setSelectedArea(e.target.value);
+                  setFormData({ ...formData, learningObjective: "" });
+                }}
+              >
+                <option value="">전체 영역</option>
+                {availableAreas.map((area) => (
+                  <option key={area} value={area}>
+                    {area}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div>
             <label
               htmlFor="knowledge-learning-objective"
               className="block text-sm font-medium text-gray-700 mb-1"
             >
-              학습 목표
+              학습 목표 (성취기준)
             </label>
-            <textarea
-              id="knowledge-learning-objective"
-              rows={2}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              placeholder="이 자료와 관련된 학습 목표를 입력하세요"
-              value={formData.learningObjective}
-              onChange={(e) =>
-                setFormData({ ...formData, learningObjective: e.target.value })
-              }
-            />
+            {formData.grade && formData.subject && availableStandards.length > 0 ? (
+              <select
+                id="knowledge-learning-objective"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                value={formData.learningObjective}
+                onChange={(e) =>
+                  setFormData({ ...formData, learningObjective: e.target.value })
+                }
+              >
+                <option value="">성취기준을 선택하세요</option>
+                {availableStandards.map((standard, index) => (
+                  <option key={index} value={standard.성취기준}>
+                    {standard.성취기준}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <textarea
+                id="knowledge-learning-objective"
+                rows={2}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                placeholder="학년과 과목을 선택하면 성취기준을 선택할 수 있습니다"
+                value={formData.learningObjective}
+                onChange={(e) =>
+                  setFormData({ ...formData, learningObjective: e.target.value })
+                }
+                disabled={!formData.grade || !formData.subject}
+              />
+            )}
+            {formData.grade && formData.subject && availableStandards.length > 0 && (
+              <p className="text-xs text-gray-500 mt-1">
+                2022개정교육과정 성취기준에서 선택하거나 직접 입력할 수 있습니다
+              </p>
+            )}
+            {formData.learningObjective && availableStandards.find(
+              (s) => s.성취기준 === formData.learningObjective
+            )?.["성취기준 해설"] && (
+              <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
+                <strong>해설:</strong>{" "}
+                {
+                  availableStandards.find(
+                    (s) => s.성취기준 === formData.learningObjective
+                  )?.["성취기준 해설"]
+                }
+              </div>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
