@@ -32,6 +32,16 @@ export interface Conversation {
   file_name?: string;
   content_type?: string;
   upload_date?: string | Date | Timestamp;
+  // 지식 분석 관련 필드
+  selected?: boolean; // 교사가 선택한 지식인지
+  area?: string; // 영역
+  achievement_standard?: string; // 성취기준 코드
+  achievement_standard_text?: string; // 성취기준 전체 텍스트
+  rubric?: { // 평가 루브릭
+    high: string;
+    medium: string;
+    low: string;
+  };
 }
 
 export function useFirebase() {

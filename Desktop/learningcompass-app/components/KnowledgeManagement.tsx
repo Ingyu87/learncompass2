@@ -9,7 +9,7 @@ import {
 } from "@/lib/curriculum";
 
 export default function KnowledgeManagement({ conversations }: { conversations: any[] }) {
-  const { addConversation, deleteConversation } = useFirebase();
+  const { addConversation, deleteConversation, updateConversation } = useFirebase();
   const [uploadMethod, setUploadMethod] = useState<"text" | "file">("text");
   const [isUploading, setIsUploading] = useState(false);
   const [formData, setFormData] = useState({
@@ -93,8 +93,8 @@ export default function KnowledgeManagement({ conversations }: { conversations: 
   };
 
   const handleUpload = async () => {
-    if (!formData.title || !formData.grade || !formData.subject || !formData.learningObjective) {
-      alert("자료 제목, 학년, 과목, 학습 목표를 모두 입력해주세요.");
+    if (!formData.title || !formData.grade || !formData.subject) {
+      alert("자료 제목, 학년, 과목을 모두 입력해주세요.");
       return;
     }
 
@@ -135,6 +135,27 @@ export default function KnowledgeManagement({ conversations }: { conversations: 
         }
       }
 
+      // AI로 성취기준 분석 및 루브릭 생성
+      alert("지식 내용을 분석하여 성취기준과 평가 루브릭을 생성 중입니다...");
+      const analysisResponse = await fetch("/api/analyze-knowledge", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content: content,
+          grade: formData.grade,
+          subject: formData.subject,
+        }),
+      });
+
+      if (!analysisResponse.ok) {
+        const errorData = await analysisResponse.json();
+        throw new Error(errorData.error || "성취기준 분석에 실패했습니다.");
+      }
+
+      const analysisData = await analysisResponse.json();
+
       const knowledgeData = {
         type: "knowledge",
         knowledge_title: formData.title,
@@ -142,9 +163,14 @@ export default function KnowledgeManagement({ conversations }: { conversations: 
         file_name: fileName,
         content_type: contentType,
         upload_date: new Date().toISOString(),
-        learning_objective: formData.learningObjective,
+        learning_objective: analysisData.achievement_standard_text,
         grade: formData.grade,
         subject: formData.subject,
+        area: analysisData.area,
+        achievement_standard: analysisData.achievement_standard,
+        achievement_standard_text: analysisData.achievement_standard_text,
+        rubric: analysisData.rubric,
+        selected: false, // 기본값: 선택되지 않음
       };
 
       await addConversation(knowledgeData as any);
@@ -152,10 +178,10 @@ export default function KnowledgeManagement({ conversations }: { conversations: 
       // Reset form
       setFormData({ title: "", grade: "", subject: "", learningObjective: "", content: "" });
       setSelectedFile(null);
-      alert("지식 자료가 성공적으로 업로드되었습니다!");
-    } catch (error) {
+      alert("지식 자료가 성공적으로 업로드되었습니다!\n성취기준과 평가 루브릭이 자동으로 생성되었습니다.");
+    } catch (error: any) {
       console.error("업로드 오류:", error);
-      alert("지식 자료 업로드에 실패했습니다.");
+      alert(`지식 자료 업로드에 실패했습니다: ${error.message}`);
     } finally {
       setIsUploading(false);
     }
@@ -170,6 +196,23 @@ export default function KnowledgeManagement({ conversations }: { conversations: 
         console.error("삭제 오류:", error);
         alert("삭제에 실패했습니다.");
       }
+    }
+  };
+
+  const handleSelectKnowledge = async (id: string, currentSelected: boolean) => {
+    try {
+      // 다른 지식의 선택 해제
+      const otherKnowledge = knowledgeData.filter((k: any) => k.id !== id && k.selected);
+      for (const k of otherKnowledge) {
+        await updateConversation(k.id || k.__backendId, { selected: false });
+      }
+      
+      // 현재 지식 선택/해제
+      await updateConversation(id, { selected: !currentSelected });
+      alert(!currentSelected ? "지식이 선택되었습니다. 학생 화면에 표시됩니다." : "지식 선택이 해제되었습니다.");
+    } catch (error) {
+      console.error("선택 오류:", error);
+      alert("선택에 실패했습니다.");
     }
   };
 
@@ -298,59 +341,10 @@ export default function KnowledgeManagement({ conversations }: { conversations: 
               </select>
             </div>
           )}
-          <div>
-            <label
-              htmlFor="knowledge-learning-objective"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              학습 목표 (성취기준)
-            </label>
-            {formData.grade && formData.subject && availableStandards.length > 0 ? (
-              <select
-                id="knowledge-learning-objective"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                value={formData.learningObjective}
-                onChange={(e) =>
-                  setFormData({ ...formData, learningObjective: e.target.value })
-                }
-              >
-                <option value="">성취기준을 선택하세요</option>
-                {availableStandards.map((standard, index) => (
-                  <option key={index} value={standard.성취기준}>
-                    {standard.성취기준}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <textarea
-                id="knowledge-learning-objective"
-                rows={2}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                placeholder="학년과 과목을 선택하면 성취기준을 선택할 수 있습니다"
-                value={formData.learningObjective}
-                onChange={(e) =>
-                  setFormData({ ...formData, learningObjective: e.target.value })
-                }
-                disabled={!formData.grade || !formData.subject}
-              />
-            )}
-            {formData.grade && formData.subject && availableStandards.length > 0 && (
-              <p className="text-xs text-gray-500 mt-1">
-                2022개정교육과정 성취기준에서 선택하거나 직접 입력할 수 있습니다
-              </p>
-            )}
-            {formData.learningObjective && availableStandards.find(
-              (s) => s.성취기준 === formData.learningObjective
-            )?.["성취기준 해설"] && (
-              <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
-                <strong>해설:</strong>{" "}
-                {
-                  availableStandards.find(
-                    (s) => s.성취기준 === formData.learningObjective
-                  )?.["성취기준 해설"]
-                }
-              </div>
-            )}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p className="text-sm text-blue-800">
+              <strong>💡 안내:</strong> 학습 내용을 업로드하면 AI가 자동으로 성취기준을 분석하고 평가 루브릭을 생성합니다.
+            </p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -507,6 +501,9 @@ export default function KnowledgeManagement({ conversations }: { conversations: 
                   내용 미리보기
                 </th>
                 <th className="px-4 py-3 text-left font-medium text-gray-700">
+                  선택
+                </th>
+                <th className="px-4 py-3 text-left font-medium text-gray-700">
                   관리
                 </th>
               </tr>
@@ -515,7 +512,7 @@ export default function KnowledgeManagement({ conversations }: { conversations: 
               {knowledgeData.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={9}
                     className="px-4 py-8 text-center text-gray-500"
                   >
                     아직 업로드된 지식 자료가 없습니다.
@@ -523,7 +520,7 @@ export default function KnowledgeManagement({ conversations }: { conversations: 
                 </tr>
               ) : (
                 knowledgeData.map((item: any) => (
-                  <tr key={item.id || item.__backendId} className="hover:bg-gray-50">
+                  <tr key={item.id || item.__backendId} className={`hover:bg-gray-50 ${item.selected ? "bg-yellow-50" : ""}`}>
                     <td className="px-4 py-3 text-gray-600">
                       {new Date(item.upload_date).toLocaleDateString("ko-KR")}
                     </td>
@@ -556,6 +553,20 @@ export default function KnowledgeManagement({ conversations }: { conversations: 
                     >
                       {item.knowledge_content.substring(0, 50)}
                       {item.knowledge_content.length > 50 ? "..." : ""}
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() =>
+                          handleSelectKnowledge(item.id || item.__backendId, item.selected || false)
+                        }
+                        className={`px-3 py-1 text-xs rounded ${
+                          item.selected
+                            ? "bg-green-600 text-white hover:bg-green-700"
+                            : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                        }`}
+                      >
+                        {item.selected ? "선택됨" : "선택"}
+                      </button>
                     </td>
                     <td className="px-4 py-3">
                       <button
