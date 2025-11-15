@@ -65,6 +65,10 @@ export default function StudentInterface() {
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
                 <div>
+                  <span className="text-xs font-medium text-blue-700">지식 제목</span>
+                  <p className="text-sm font-semibold text-gray-800 mt-1">{selectedKnowledge.knowledge_title}</p>
+                </div>
+                <div>
                   <span className="text-xs font-medium text-blue-700">학년</span>
                   <p className="text-sm text-gray-800 mt-1">{selectedKnowledge.grade}</p>
                 </div>
