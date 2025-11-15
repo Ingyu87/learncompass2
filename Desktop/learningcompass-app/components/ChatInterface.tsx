@@ -86,6 +86,7 @@ export default function ChatInterface({
   }, [conversations, learningConfig.studentNumber, messages]);
 
   const checkSafety = (question: string, learningObjective: string) => {
+    // 비속어 및 부적절한 키워드 체크
     const inappropriateKeywords = [
       "개인정보",
       "주소",
@@ -93,20 +94,30 @@ export default function ChatInterface({
       "비밀번호",
       "폭력",
       "욕설",
+      "바보",
+      "멍청이",
+      "미친",
+      "죽어",
+      "꺼져",
+      "시발",
+      "개새끼",
+      "병신",
     ];
     const questionLower = question.toLowerCase();
 
     for (let keyword of inappropriateKeywords) {
       if (questionLower.includes(keyword)) {
-        return { safe: false, reason: "부적절한 내용 포함" };
+        return { safe: false, reason: "부적절한 언어 사용" };
       }
     }
 
-    if (learningObjective && question.length > 5) {
-      return { safe: true, reason: "안전" };
+    // 기본 검증: 질문이 너무 짧거나 비어있으면 안됨
+    if (!learningObjective || question.trim().length < 3) {
+      return { safe: false, reason: "질문을 정확히 입력해주세요" };
     }
 
-    return { safe: false, reason: "학습 목표와 무관" };
+    // 기본 안전 통과 (실제 내용 검증은 AI가 수행)
+    return { safe: true, reason: "안전" };
   };
 
   const handleSubmit = async () => {
