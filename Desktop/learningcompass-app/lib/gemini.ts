@@ -14,8 +14,8 @@ export async function generateAIResponse(
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    // gemini-pro는 더 이상 사용 불가능하므로 gemini-1.5-flash로 변경
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // 사용 가능한 모델로 변경
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
     const prompt = `당신은 초등학교 ${grade} 학생을 위한 친절한 AI 학습 도우미입니다.
 과목: ${subject}
