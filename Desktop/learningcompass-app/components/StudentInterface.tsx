@@ -134,6 +134,7 @@ export default function StudentInterface() {
         <ChatInterface
           learningConfig={learningConfig}
           onConversationCreate={addConversation}
+          conversations={conversations}
         />
       </div>
     </div>

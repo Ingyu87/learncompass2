@@ -22,6 +22,7 @@ interface Message {
 export default function ChatInterface({
   learningConfig,
   onConversationCreate,
+  conversations = [],
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -44,6 +45,44 @@ export default function ChatInterface({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // 승인된 대화 확인 및 응답 표시
+  useEffect(() => {
+    if (!learningConfig.studentNumber) return;
+
+    const myConversations = conversations.filter(
+      (c: any) => 
+        (c.type === "conversation" || !c.type) && 
+        c.student_name === learningConfig.studentNumber &&
+        c.teacher_approved === true &&
+        c.ai_response &&
+        c.ai_response.trim() !== ""
+    );
+
+    // 승인된 대화가 있으면 메시지 업데이트
+    myConversations.forEach((conv: any) => {
+      // 이미 표시된 메시지인지 확인
+      const questionExists = messages.some(
+        (msg) => msg.sender === "user" && msg.content === conv.question
+      );
+      const responseExists = messages.some(
+        (msg) => msg.sender === "ai" && msg.content === conv.ai_response
+      );
+
+      if (questionExists && !responseExists) {
+        // 대기 메시지 제거하고 실제 응답 추가
+        setMessages((prev) => {
+          const filtered = prev.filter(
+            (msg) => !msg.content.includes("승인 전입니다")
+          );
+          return [
+            ...filtered,
+            { sender: "ai", content: conv.ai_response },
+          ];
+        });
+      }
+    });
+  }, [conversations, learningConfig.studentNumber, messages]);
 
   const checkSafety = (question: string, learningObjective: string) => {
     const inappropriateKeywords = [
@@ -98,39 +137,15 @@ export default function ChatInterface({
     setMessages((prev) => [...prev, userMessage]);
     setQuestion("");
 
+    // 승인 대기 메시지 추가
+    const waitingMessage: Message = { 
+      sender: "ai", 
+      content: "승인 전입니다. 대기해주세요. 선생님의 승인 후 답변을 드리겠습니다." 
+    };
+    setMessages((prev) => [...prev, waitingMessage]);
+
     try {
-      // Gemini API 호출 (참고 자료 컨텍스트 제거)
-      const response = await fetch("/api/gemini", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          question,
-          subject: learningConfig.subject,
-          grade: learningConfig.grade,
-          learningObjective: learningConfig.learningObjective,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "API 요청 실패");
-      }
-
-      const data = await response.json();
-      
-      if (data.error) {
-        throw new Error(data.error);
-      }
-
-      const aiResponse = data.response || "죄송해요, 답변을 생성하는데 문제가 생겼어요.";
-
-      // AI 메시지 추가
-      const aiMessage: Message = { sender: "ai", content: aiResponse };
-      setMessages((prev) => [...prev, aiMessage]);
-
-      // Firebase에 저장
+      // Firebase에 저장 (승인 대기 상태)
       await onConversationCreate({
         type: "conversation",
         student_name: learningConfig.studentNumber,
@@ -138,7 +153,7 @@ export default function ChatInterface({
         subject: learningConfig.subject,
         learning_objective: learningConfig.learningObjective,
         question: userMessage.content,
-        ai_response: aiResponse,
+        ai_response: "", // 승인 전에는 빈 응답
         safety_status: safetyCheck.reason,
         teacher_approved: false,
         knowledge_title: "",

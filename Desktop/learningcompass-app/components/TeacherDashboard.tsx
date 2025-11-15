@@ -14,7 +14,45 @@ export default function TeacherDashboard({
   onLogout,
 }: TeacherDashboardProps) {
   const handleApprovalToggle = async (id: string, currentStatus: boolean) => {
-    await onApprovalToggle(id, { teacher_approved: !currentStatus });
+    const conversation = conversations.find((c: any) => c.id === id || c.__backendId === id);
+    
+    if (!currentStatus && conversation) {
+      // 승인 시 AI 응답 생성
+      try {
+        const response = await fetch("/api/gemini", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            question: conversation.question,
+            subject: conversation.subject,
+            grade: conversation.grade,
+            learningObjective: conversation.learning_objective,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "API 요청 실패");
+        }
+
+        const data = await response.json();
+        const aiResponse = data.response || "죄송해요, 답변을 생성하는데 문제가 생겼어요.";
+
+        // 승인과 함께 AI 응답 업데이트
+        await onApprovalToggle(id, { 
+          teacher_approved: true,
+          ai_response: aiResponse 
+        });
+      } catch (error: any) {
+        console.error("AI 응답 생성 오류:", error);
+        alert(`AI 응답 생성에 실패했습니다: ${error.message}`);
+      }
+    } else {
+      // 승인 해제
+      await onApprovalToggle(id, { teacher_approved: false });
+    }
   };
 
   const exportData = () => {
