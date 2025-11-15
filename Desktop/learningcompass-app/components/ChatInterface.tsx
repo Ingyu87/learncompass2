@@ -164,6 +164,11 @@ export default function ChatInterface({
       const errorMessage = error?.message || "오류가 발생했습니다. 다시 시도해주세요.";
       setSafetyWarning(errorMessage);
       
+      // 대기 메시지 제거
+      setMessages((prev) => 
+        prev.filter((msg) => !msg.content.includes("승인 전입니다"))
+      );
+      
       // 에러 메시지를 AI 메시지로도 표시
       const errorAiMessage: Message = {
         sender: "ai",
