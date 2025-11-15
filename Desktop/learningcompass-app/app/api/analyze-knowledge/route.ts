@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { loadCurriculumData, getStandardsBySubjectGradeAndArea } from "@/lib/curriculum";
+import { getStandardsBySubjectGradeAndArea, isGradeInRange, type CurriculumStandard } from "@/lib/curriculum";
+import { readFile } from "fs/promises";
+import { join } from "path";
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,12 +25,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 성취기준 데이터 로드
-    const standards = await getStandardsBySubjectGradeAndArea(subject, grade);
+    // 성취기준 데이터 로드 (서버 사이드)
+    let curriculumData: CurriculumStandard[] = [];
+    try {
+      const filePath = join(process.cwd(), "public", "data", "curriculum-standards.json");
+      const fileContents = await readFile(filePath, "utf-8");
+      curriculumData = JSON.parse(fileContents) as CurriculumStandard[];
+    } catch (error) {
+      console.error("성취기준 데이터 파일 읽기 오류:", error);
+      return NextResponse.json(
+        { error: "성취기준 데이터를 불러올 수 없습니다." },
+        { status: 500 }
+      );
+    }
+
+    // 학년/과목에 맞는 성취기준 필터링
+    const standards = curriculumData.filter((item) => {
+      const matchesSubject = item.교과 === subject;
+      const matchesGrade = isGradeInRange(grade, item.학년);
+      return matchesSubject && matchesGrade;
+    });
     
     if (standards.length === 0) {
+      console.error(`성취기준을 찾을 수 없음: 학년=${grade}, 과목=${subject}`);
+      console.error(`사용 가능한 교과:`, [...new Set(curriculumData.map(d => d.교과))]);
+      console.error(`사용 가능한 학년:`, [...new Set(curriculumData.map(d => d.학년))]);
       return NextResponse.json(
-        { error: "해당 학년/과목에 대한 성취기준을 찾을 수 없습니다." },
+        { error: `해당 학년(${grade})/과목(${subject})에 대한 성취기준을 찾을 수 없습니다.` },
         { status: 404 }
       );
     }
