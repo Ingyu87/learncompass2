@@ -10,7 +10,6 @@ import {
 
 export default function KnowledgeManagement({ conversations }: { conversations: any[] }) {
   const { addConversation, deleteConversation, updateConversation } = useFirebase();
-  const [uploadMethod, setUploadMethod] = useState<"text" | "file">("text");
   const [isUploading, setIsUploading] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
@@ -19,7 +18,6 @@ export default function KnowledgeManagement({ conversations }: { conversations: 
     learningObjective: "",
     content: "",
   });
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [availableStandards, setAvailableStandards] = useState<CurriculumStandard[]>([]);
   const [selectedArea, setSelectedArea] = useState<string>("");
   const [availableAreas, setAvailableAreas] = useState<string[]>([]);
@@ -72,68 +70,21 @@ export default function KnowledgeManagement({ conversations }: { conversations: 
     loadFilteredStandards();
   }, [formData.grade, formData.subject, selectedArea]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        alert("파일 크기는 5MB 이하여야 합니다.");
-        return;
-      }
-      setSelectedFile(file);
-    }
-  };
-
-  const readTextFile = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => resolve(e.target?.result as string);
-      reader.onerror = reject;
-      reader.readAsText(file, "UTF-8");
-    });
-  };
-
   const handleUpload = async () => {
     if (!formData.title || !formData.grade || !formData.subject) {
       alert("자료 제목, 학년, 과목을 모두 입력해주세요.");
       return;
     }
 
+    if (!formData.content.trim()) {
+      alert("학습 내용을 입력해주세요.");
+      return;
+    }
+
     setIsUploading(true);
 
     try {
-      let content = "";
-      let fileName = "";
-      let contentType = "text";
-
-      if (uploadMethod === "text") {
-        if (!formData.content.trim()) {
-          alert("학습 내용을 입력해주세요.");
-          setIsUploading(false);
-          return;
-        }
-        content = formData.content;
-      } else {
-        if (!selectedFile) {
-          alert("파일을 선택해주세요.");
-          setIsUploading(false);
-          return;
-        }
-        fileName = selectedFile.name;
-        if (selectedFile.type === "text/plain" || selectedFile.name.endsWith(".txt")) {
-          content = await readTextFile(selectedFile);
-          contentType = "text";
-        } else if (
-          selectedFile.type === "application/pdf" ||
-          selectedFile.name.endsWith(".pdf")
-        ) {
-          content = `PDF 파일이 업로드되었습니다: ${selectedFile.name}\n파일 크기: ${(selectedFile.size / 1024).toFixed(2)}KB\n업로드 시간: ${new Date().toLocaleString()}`;
-          contentType = "pdf";
-        } else {
-          alert("TXT 또는 PDF 파일만 지원됩니다.");
-          setIsUploading(false);
-          return;
-        }
-      }
+      const content = formData.content;
 
       // AI로 성취기준 분석 및 루브릭 생성
       alert("지식 내용을 분석하여 성취기준과 평가 루브릭을 생성 중입니다...");
@@ -160,8 +111,7 @@ export default function KnowledgeManagement({ conversations }: { conversations: 
         type: "knowledge",
         knowledge_title: formData.title,
         knowledge_content: content,
-        file_name: fileName,
-        content_type: contentType,
+        content_type: "text",
         upload_date: new Date().toISOString(),
         learning_objective: analysisData.achievement_standard_text,
         grade: formData.grade,
@@ -177,7 +127,6 @@ export default function KnowledgeManagement({ conversations }: { conversations: 
 
       // Reset form
       setFormData({ title: "", grade: "", subject: "", learningObjective: "", content: "" });
-      setSelectedFile(null);
       alert("지식 자료가 성공적으로 업로드되었습니다!\n성취기준과 평가 루브릭이 자동으로 생성되었습니다.");
     } catch (error: any) {
       console.error("업로드 오류:", error);
@@ -347,105 +296,23 @@ export default function KnowledgeManagement({ conversations }: { conversations: 
             </p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              업로드 방법 선택
+            <label
+              htmlFor="knowledge-content"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              학습 내용
             </label>
-            <div className="flex space-x-4 mb-4">
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="upload-method"
-                  value="text"
-                  checked={uploadMethod === "text"}
-                  onChange={() => setUploadMethod("text")}
-                  className="mr-2"
-                />
-                <span className="text-sm">텍스트 직접 입력</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="radio"
-                  name="upload-method"
-                  value="file"
-                  checked={uploadMethod === "file"}
-                  onChange={() => setUploadMethod("file")}
-                  className="mr-2"
-                />
-                <span className="text-sm">파일 업로드</span>
-              </label>
-            </div>
+            <textarea
+              id="knowledge-content"
+              rows={8}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              placeholder="학습 목표와 관련된 지식 내용을 입력하세요..."
+              value={formData.content}
+              onChange={(e) =>
+                setFormData({ ...formData, content: e.target.value })
+              }
+            />
           </div>
-
-          {uploadMethod === "text" ? (
-            <div>
-              <label
-                htmlFor="knowledge-content"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                학습 내용
-              </label>
-              <textarea
-                id="knowledge-content"
-                rows={6}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                placeholder="학습 목표와 관련된 지식 내용을 입력하세요..."
-                value={formData.content}
-                onChange={(e) =>
-                  setFormData({ ...formData, content: e.target.value })
-                }
-              />
-            </div>
-          ) : (
-            <div>
-              <label
-                htmlFor="knowledge-file"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                파일 선택
-              </label>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                <input
-                  type="file"
-                  id="knowledge-file"
-                  accept=".txt,.pdf"
-                  className="hidden"
-                  onChange={handleFileChange}
-                />
-                <label
-                  htmlFor="knowledge-file"
-                  className="cursor-pointer block"
-                >
-                  <div className="text-gray-400 mb-2">
-                    <svg
-                      className="mx-auto h-12 w-12"
-                      stroke="currentColor"
-                      fill="none"
-                      viewBox="0 0 48 48"
-                    >
-                      <path
-                        d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </div>
-                  <p className="text-sm text-gray-600">
-                    클릭하거나 파일을 드래그하여 업로드
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    TXT, PDF 파일만 지원 (최대 5MB)
-                  </p>
-                </label>
-                {selectedFile && (
-                  <div className="mt-2 text-sm text-gray-600">
-                    선택된 파일: {selectedFile.name} (
-                    {(selectedFile.size / 1024).toFixed(2)}KB)
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
 
           <button
             onClick={handleUpload}
@@ -492,12 +359,6 @@ export default function KnowledgeManagement({ conversations }: { conversations: 
                   과목
                 </th>
                 <th className="px-4 py-3 text-left font-medium text-gray-700">
-                  파일명
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-gray-700">
-                  유형
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-gray-700">
                   내용 미리보기
                 </th>
                 <th className="px-4 py-3 text-left font-medium text-gray-700">
@@ -512,7 +373,7 @@ export default function KnowledgeManagement({ conversations }: { conversations: 
               {knowledgeData.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={9}
+                    colSpan={7}
                     className="px-4 py-8 text-center text-gray-500"
                   >
                     아직 업로드된 지식 자료가 없습니다.
@@ -532,20 +393,6 @@ export default function KnowledgeManagement({ conversations }: { conversations: 
                     </td>
                     <td className="px-4 py-3">
                       {item.subject || "-"}
-                    </td>
-                    <td className="px-4 py-3">
-                      {item.file_name || "직접 입력"}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`px-2 py-1 text-xs rounded-full ${
-                          item.content_type === "text"
-                            ? "bg-blue-100 text-blue-800"
-                            : "bg-green-100 text-green-800"
-                        }`}
-                      >
-                        {item.content_type === "text" ? "텍스트" : "PDF"}
-                      </span>
                     </td>
                     <td
                       className="px-4 py-3 max-w-xs truncate"
