@@ -98,3 +98,4 @@ npm run dev
 - API 키가 올바르게 설정되었는지 확인
 - Google AI Studio에서 API 키가 활성화되어 있는지 확인
 
+
