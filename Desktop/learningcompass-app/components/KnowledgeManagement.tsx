@@ -71,8 +71,8 @@ export default function KnowledgeManagement({ conversations }: { conversations: 
   }, [formData.grade, formData.subject, selectedArea]);
 
   const handleUpload = async () => {
-    if (!formData.title || !formData.grade) {
-      alert("자료 제목과 학년을 입력해주세요.");
+    if (!formData.title || !formData.grade || !formData.subject) {
+      alert("자료 제목, 학년, 과목을 모두 입력해주세요.");
       return;
     }
 
@@ -96,7 +96,7 @@ export default function KnowledgeManagement({ conversations }: { conversations: 
         body: JSON.stringify({
           content: content,
           grade: formData.grade,
-          // 교과명은 AI가 자동으로 분석하여 결정
+          subject: formData.subject,
         }),
       });
 
@@ -115,7 +115,7 @@ export default function KnowledgeManagement({ conversations }: { conversations: 
         upload_date: new Date().toISOString(),
         learning_objective: analysisData.achievement_standard_text,
         grade: formData.grade,
-        subject: analysisData.subject || formData.subject, // AI가 분석한 교과명 사용
+        subject: formData.subject, // 교사가 선택한 교과명 사용
         area: analysisData.area,
         achievement_standard: analysisData.achievement_standard,
         achievement_standard_text: analysisData.achievement_standard_text,
@@ -239,9 +239,35 @@ export default function KnowledgeManagement({ conversations }: { conversations: 
               <option value="6학년">6학년</option>
             </select>
           </div>
+          <div>
+            <label
+              htmlFor="knowledge-subject"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              과목
+            </label>
+            <select
+              id="knowledge-subject"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              value={formData.subject}
+              onChange={(e) =>
+                setFormData({ ...formData, subject: e.target.value })
+              }
+            >
+              <option value="">과목 선택</option>
+              <option value="국어">국어</option>
+              <option value="수학">수학</option>
+              <option value="과학">과학</option>
+              <option value="사회">사회</option>
+              <option value="영어">영어</option>
+              <option value="미술">미술</option>
+              <option value="음악">음악</option>
+              <option value="체육">체육</option>
+            </select>
+          </div>
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
             <p className="text-sm text-blue-800">
-              <strong>💡 안내:</strong> 학습 내용을 입력하면 AI가 자동으로 교과명, 성취기준, 평가 루브릭을 분석하여 생성합니다.
+              <strong>💡 안내:</strong> 학습 내용을 입력하면 AI가 선택한 교과에 맞는 성취기준을 찾고 평가 루브릭을 생성합니다.
             </p>
           </div>
           <div>

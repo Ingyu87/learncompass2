@@ -7,9 +7,9 @@ import { join } from "path";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { content, grade } = body;
+    const { content, grade, subject } = body;
 
-    if (!content || !grade) {
+    if (!content || !grade || !subject) {
       return NextResponse.json(
         { error: "필수 파라미터가 누락되었습니다." },
         { status: 400 }
@@ -39,45 +39,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 학년에 맞는 성취기준 필터링 (교과명은 제외)
+    // 교사가 선택한 교과와 학년에 맞는 성취기준 필터링
+    const normalizeSubject = (s: string) => s.trim().replace(/\s+/g, "");
+    const normalizedSubject = normalizeSubject(subject);
+    
     const standards = curriculumData.filter((item) => {
-      return isGradeInRange(grade, item.학년);
+      const matchesSubject = normalizeSubject(item.교과) === normalizedSubject;
+      const matchesGrade = isGradeInRange(grade, item.학년);
+      return matchesSubject && matchesGrade;
     });
     
     if (standards.length === 0) {
       return NextResponse.json(
-        { error: `해당 학년(${grade})에 대한 성취기준을 찾을 수 없습니다.` },
+        { error: `해당 학년(${grade})/과목(${subject})에 대한 성취기준을 찾을 수 없습니다.` },
         { status: 404 }
       );
     }
 
-    // 성취기준 목록을 문자열로 변환 (교과별로 그룹화)
-    const standardsBySubject = new Map<string, CurriculumStandard[]>();
-    standards.forEach((s) => {
-      if (!standardsBySubject.has(s.교과)) {
-        standardsBySubject.set(s.교과, []);
-      }
-      standardsBySubject.get(s.교과)!.push(s);
-    });
-
-    const standardsText = Array.from(standardsBySubject.entries())
-      .map(([subject, items]) => {
-        const subjectStandards = items
-          .map((s, idx) => `  ${idx + 1}. [${s.영역}] ${s.성취기준}`)
-          .join("\n");
-        return `${subject}:\n${subjectStandards}`;
-      })
-      .join("\n\n");
+    // 성취기준 목록을 문자열로 변환
+    const standardsText = standards
+      .map((s, idx) => `${idx + 1}. [${s.영역}] ${s.성취기준}`)
+      .join("\n");
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    // 1단계: 성취기준 분석 (지식 내용만으로 분석)
+    // 1단계: 성취기준 분석 (교사가 선택한 교과의 성취기준 중에서 찾기)
     const analysisPrompt = `당신은 초등학교 교육과정 전문가입니다.
 
 학년: ${grade}
+과목: ${subject}
 
-다음은 ${grade}의 모든 교과 성취기준 목록입니다:
+다음은 해당 학년/과목의 성취기준 목록입니다:
 ${standardsText}
 
 다음 학습 내용을 분석하여 가장 적합한 성취기준을 찾아주세요:
@@ -88,7 +81,6 @@ ${content}
 {
   "achievement_standard": "가장 적합한 성취기준 코드 (예: [4사02-02])",
   "achievement_standard_text": "성취기준 전체 텍스트",
-  "subject": "교과명",
   "area": "영역명",
   "explanation": "왜 이 성취기준이 적합한지 간단한 설명"
 }`;
@@ -112,7 +104,6 @@ ${content}
       analysisData = {
         achievement_standard: standards[0].성취기준,
         achievement_standard_text: standards[0].성취기준,
-        subject: standards[0].교과,
         area: standards[0].영역,
         explanation: "자동 분석 결과",
       };
@@ -122,7 +113,7 @@ ${content}
     const rubricPrompt = `당신은 초등학교 평가 전문가입니다.
 
 학년: ${grade}
-교과: ${analysisData.subject || "해당 교과"}
+과목: ${subject}
 성취기준: ${analysisData.achievement_standard_text}
 
 위 성취기준에 맞는 평가 루브릭을 상/중/하 3단계로 작성해주세요.
@@ -164,7 +155,6 @@ ${content}
     return NextResponse.json({
       achievement_standard: analysisData.achievement_standard,
       achievement_standard_text: analysisData.achievement_standard_text,
-      subject: analysisData.subject || "해당 교과",
       area: analysisData.area,
       explanation: analysisData.explanation,
       rubric: rubricData.rubric,
