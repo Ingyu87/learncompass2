@@ -31,10 +31,16 @@ export async function generateAIResponse(
     const result = await model.generateContent(prompt);
     const response = await result.response;
     return response.text();
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gemini API 오류:", error);
+    
+    // 더 자세한 에러 메시지
+    if (error?.message) {
+      throw new Error(`Gemini API 오류: ${error.message}`);
+    }
+    
     // Fallback 응답
-    return "죄송해요, 지금 답변을 생성하는데 문제가 생겼어요. 다시 시도해주세요!";
+    throw new Error("AI 응답 생성 중 오류가 발생했습니다. API 키와 네트워크 연결을 확인해주세요.");
   }
 }
 

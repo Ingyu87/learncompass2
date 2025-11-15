@@ -109,7 +109,17 @@ export default function ChatInterface({
         }),
       });
 
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "API 요청 실패");
+      }
+
       const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
       const aiResponse = data.response || "죄송해요, 답변을 생성하는데 문제가 생겼어요.";
 
       // AI 메시지 추가
@@ -130,9 +140,17 @@ export default function ChatInterface({
         knowledge_title: "",
         timestamp: new Date().toISOString(),
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("오류 발생:", error);
-      setSafetyWarning("오류가 발생했습니다. 다시 시도해주세요.");
+      const errorMessage = error?.message || "오류가 발생했습니다. 다시 시도해주세요.";
+      setSafetyWarning(errorMessage);
+      
+      // 에러 메시지를 AI 메시지로도 표시
+      const errorAiMessage: Message = {
+        sender: "ai",
+        content: `죄송해요, ${errorMessage} 다시 시도해주세요!`,
+      };
+      setMessages((prev) => [...prev, errorAiMessage]);
     } finally {
       setIsLoading(false);
     }

@@ -11,12 +11,16 @@ interface LearningSetupProps {
   config: LearningConfig;
   onConfigChange: (config: LearningConfig) => void;
   uniqueObjectives?: string[];
+  availableGrades?: string[];
+  availableSubjects?: string[];
 }
 
 export default function LearningSetup({
   config,
   onConfigChange,
   uniqueObjectives = [],
+  availableGrades = [],
+  availableSubjects = [],
 }: LearningSetupProps) {
   const handleChange = (field: keyof LearningConfig, value: string) => {
     onConfigChange({
@@ -67,16 +71,40 @@ export default function LearningSetup({
               id="grade-select"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               value={config.grade}
-              onChange={(e) => handleChange("grade", e.target.value)}
+              onChange={(e) => {
+                handleChange("grade", e.target.value);
+                // Reset subject and learning objective when grade changes
+                onConfigChange({
+                  ...config,
+                  grade: e.target.value,
+                  subject: "",
+                  learningObjective: "",
+                });
+              }}
             >
               <option value="">학년 선택</option>
-              <option value="1학년">1학년</option>
-              <option value="2학년">2학년</option>
-              <option value="3학년">3학년</option>
-              <option value="4학년">4학년</option>
-              <option value="5학년">5학년</option>
-              <option value="6학년">6학년</option>
+              {availableGrades.length > 0 ? (
+                availableGrades.map((grade) => (
+                  <option key={grade} value={grade}>
+                    {grade}
+                  </option>
+                ))
+              ) : (
+                <>
+                  <option value="1학년">1학년</option>
+                  <option value="2학년">2학년</option>
+                  <option value="3학년">3학년</option>
+                  <option value="4학년">4학년</option>
+                  <option value="5학년">5학년</option>
+                  <option value="6학년">6학년</option>
+                </>
+              )}
             </select>
+            {availableGrades.length > 0 && (
+              <p className="text-xs text-gray-500 mt-1">
+                선생님이 업로드한 학년만 선택할 수 있습니다
+              </p>
+            )}
           </div>
           <div>
             <label
@@ -89,18 +117,47 @@ export default function LearningSetup({
               id="subject-select"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
               value={config.subject}
-              onChange={(e) => handleChange("subject", e.target.value)}
+              onChange={(e) => {
+                handleChange("subject", e.target.value);
+                // Reset learning objective when subject changes
+                onConfigChange({
+                  ...config,
+                  subject: e.target.value,
+                  learningObjective: "",
+                });
+              }}
+              disabled={!config.grade}
             >
               <option value="">과목 선택</option>
-              <option value="국어">국어</option>
-              <option value="수학">수학</option>
-              <option value="과학">과학</option>
-              <option value="사회">사회</option>
-              <option value="영어">영어</option>
-              <option value="미술">미술</option>
-              <option value="음악">음악</option>
-              <option value="체육">체육</option>
+              {availableSubjects.length > 0 ? (
+                availableSubjects.map((subject) => (
+                  <option key={subject} value={subject}>
+                    {subject}
+                  </option>
+                ))
+              ) : (
+                <>
+                  <option value="국어">국어</option>
+                  <option value="수학">수학</option>
+                  <option value="과학">과학</option>
+                  <option value="사회">사회</option>
+                  <option value="영어">영어</option>
+                  <option value="미술">미술</option>
+                  <option value="음악">음악</option>
+                  <option value="체육">체육</option>
+                </>
+              )}
             </select>
+            {availableSubjects.length > 0 && (
+              <p className="text-xs text-gray-500 mt-1">
+                선생님이 업로드한 과목만 선택할 수 있습니다
+              </p>
+            )}
+            {!config.grade && (
+              <p className="text-xs text-red-500 mt-1">
+                먼저 학년을 선택해주세요
+              </p>
+            )}
           </div>
           <div>
             <label

@@ -9,6 +9,8 @@ export default function KnowledgeManagement({ conversations }: { conversations: 
   const [isUploading, setIsUploading] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
+    grade: "",
+    subject: "",
     learningObjective: "",
     content: "",
   });
@@ -37,8 +39,8 @@ export default function KnowledgeManagement({ conversations }: { conversations: 
   };
 
   const handleUpload = async () => {
-    if (!formData.title || !formData.learningObjective) {
-      alert("자료 제목과 학습 목표를 입력해주세요.");
+    if (!formData.title || !formData.grade || !formData.subject || !formData.learningObjective) {
+      alert("자료 제목, 학년, 과목, 학습 목표를 모두 입력해주세요.");
       return;
     }
 
@@ -87,12 +89,14 @@ export default function KnowledgeManagement({ conversations }: { conversations: 
         content_type: contentType,
         upload_date: new Date().toISOString(),
         learning_objective: formData.learningObjective,
+        grade: formData.grade,
+        subject: formData.subject,
       };
 
       await addConversation(knowledgeData as any);
 
       // Reset form
-      setFormData({ title: "", learningObjective: "", content: "" });
+      setFormData({ title: "", grade: "", subject: "", learningObjective: "", content: "" });
       setSelectedFile(null);
       alert("지식 자료가 성공적으로 업로드되었습니다!");
     } catch (error) {
@@ -157,12 +161,62 @@ export default function KnowledgeManagement({ conversations }: { conversations: 
               type="text"
               id="knowledge-title"
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              placeholder="예: 3학년 수학 - 분수의 개념"
+              placeholder="예: 4학년 사회-2단원"
               value={formData.title}
               onChange={(e) =>
                 setFormData({ ...formData, title: e.target.value })
               }
             />
+          </div>
+          <div>
+            <label
+              htmlFor="knowledge-grade"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              학년
+            </label>
+            <select
+              id="knowledge-grade"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              value={formData.grade}
+              onChange={(e) =>
+                setFormData({ ...formData, grade: e.target.value })
+              }
+            >
+              <option value="">학년 선택</option>
+              <option value="1학년">1학년</option>
+              <option value="2학년">2학년</option>
+              <option value="3학년">3학년</option>
+              <option value="4학년">4학년</option>
+              <option value="5학년">5학년</option>
+              <option value="6학년">6학년</option>
+            </select>
+          </div>
+          <div>
+            <label
+              htmlFor="knowledge-subject"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              과목
+            </label>
+            <select
+              id="knowledge-subject"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              value={formData.subject}
+              onChange={(e) =>
+                setFormData({ ...formData, subject: e.target.value })
+              }
+            >
+              <option value="">과목 선택</option>
+              <option value="국어">국어</option>
+              <option value="수학">수학</option>
+              <option value="과학">과학</option>
+              <option value="사회">사회</option>
+              <option value="영어">영어</option>
+              <option value="미술">미술</option>
+              <option value="음악">음악</option>
+              <option value="체육">체육</option>
+            </select>
           </div>
           <div>
             <label
@@ -322,6 +376,12 @@ export default function KnowledgeManagement({ conversations }: { conversations: 
                   자료 제목
                 </th>
                 <th className="px-4 py-3 text-left font-medium text-gray-700">
+                  학년
+                </th>
+                <th className="px-4 py-3 text-left font-medium text-gray-700">
+                  과목
+                </th>
+                <th className="px-4 py-3 text-left font-medium text-gray-700">
                   파일명
                 </th>
                 <th className="px-4 py-3 text-left font-medium text-gray-700">
@@ -339,7 +399,7 @@ export default function KnowledgeManagement({ conversations }: { conversations: 
               {knowledgeData.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={8}
                     className="px-4 py-8 text-center text-gray-500"
                   >
                     아직 업로드된 지식 자료가 없습니다.
@@ -353,6 +413,12 @@ export default function KnowledgeManagement({ conversations }: { conversations: 
                     </td>
                     <td className="px-4 py-3 font-medium">
                       {item.knowledge_title}
+                    </td>
+                    <td className="px-4 py-3">
+                      {item.grade || "-"}
+                    </td>
+                    <td className="px-4 py-3">
+                      {item.subject || "-"}
                     </td>
                     <td className="px-4 py-3">
                       {item.file_name || "직접 입력"}
