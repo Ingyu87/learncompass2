@@ -12,6 +12,7 @@ interface LearningConfig {
 interface ChatInterfaceProps {
   learningConfig: LearningConfig;
   onConversationCreate: (conversation: any) => Promise<void>;
+  conversations?: any[]; // 승인된 대화 확인용 (실시간 업데이트)
 }
 
 interface Message {
