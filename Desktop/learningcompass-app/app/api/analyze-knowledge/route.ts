@@ -62,8 +62,8 @@ export async function POST(request: NextRequest) {
       .join("\n");
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    // 최신 모델 사용
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    // 사용 가능한 모델 시도 (우선순위: 2.5-flash -> 1.5-flash -> pro)
+    const models = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-pro"];
 
     // 1단계: 성취기준 분석 (교사가 선택한 교과의 성취기준 중에서 찾기)
     const analysisPrompt = `당신은 초등학교 교육과정 전문가입니다.
@@ -86,8 +86,29 @@ ${content}
   "explanation": "왜 이 성취기준이 적합한지 간단한 설명"
 }`;
 
-    const analysisResult = await model.generateContent(analysisPrompt);
-    const analysisResponse = await analysisResult.response;
+    // 사용 가능한 모델로 시도
+    let analysisResult;
+    let analysisResponse;
+    for (const modelName of models) {
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName });
+        analysisResult = await model.generateContent(analysisPrompt);
+        analysisResponse = await analysisResult.response;
+        break; // 성공하면 루프 종료
+      } catch (error: any) {
+        // 모델을 찾을 수 없으면 다음 모델 시도
+        if (error?.message?.includes("not found") || error?.message?.includes("404")) {
+          console.log(`모델 ${modelName}을 사용할 수 없습니다. 다음 모델을 시도합니다.`);
+          continue;
+        }
+        // 다른 에러면 재throw
+        throw error;
+      }
+    }
+    
+    if (!analysisResponse) {
+      throw new Error("사용 가능한 Gemini 모델을 찾을 수 없습니다.");
+    }
     let analysisData;
     
     try {
@@ -129,8 +150,29 @@ ${content}
   }
 }`;
 
-    const rubricResult = await model.generateContent(rubricPrompt);
-    const rubricResponse = await rubricResult.response;
+    // 사용 가능한 모델로 시도
+    let rubricResult;
+    let rubricResponse;
+    for (const modelName of models) {
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName });
+        rubricResult = await model.generateContent(rubricPrompt);
+        rubricResponse = await rubricResult.response;
+        break; // 성공하면 루프 종료
+      } catch (error: any) {
+        // 모델을 찾을 수 없으면 다음 모델 시도
+        if (error?.message?.includes("not found") || error?.message?.includes("404")) {
+          console.log(`모델 ${modelName}을 사용할 수 없습니다. 다음 모델을 시도합니다.`);
+          continue;
+        }
+        // 다른 에러면 재throw
+        throw error;
+      }
+    }
+    
+    if (!rubricResponse) {
+      throw new Error("사용 가능한 Gemini 모델을 찾을 수 없습니다.");
+    }
     let rubricData;
     
     try {

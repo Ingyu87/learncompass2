@@ -14,9 +14,7 @@ export async function generateAIResponse(
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    // 최신 모델 사용
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
+    
     const prompt = `당신은 초등학교 ${grade} 학생을 위한 친절한 AI 학습 도우미입니다.
 과목: ${subject}
 학습 목표: ${learningObjective}
@@ -29,9 +27,27 @@ export async function generateAIResponse(
 - 학습 목표와 관련된 내용을 중심으로 답변하세요
 - 답변은 2-3문장 정도로 간결하게 작성하세요`;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return response.text();
+    // 사용 가능한 모델 시도 (우선순위: 2.5-flash -> 1.5-flash -> pro)
+    const models = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-pro"];
+    
+    for (const modelName of models) {
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        return response.text();
+      } catch (error: any) {
+        // 모델을 찾을 수 없으면 다음 모델 시도
+        if (error?.message?.includes("not found") || error?.message?.includes("404")) {
+          console.log(`모델 ${modelName}을 사용할 수 없습니다. 다음 모델을 시도합니다.`);
+          continue;
+        }
+        // 다른 에러면 재throw
+        throw error;
+      }
+    }
+    
+    throw new Error("사용 가능한 Gemini 모델을 찾을 수 없습니다.");
   } catch (error: any) {
     console.error("Gemini API 오류:", error);
     
