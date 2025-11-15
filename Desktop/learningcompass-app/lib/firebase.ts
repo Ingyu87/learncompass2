@@ -11,16 +11,24 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-let app: FirebaseApp;
-let db: Firestore;
-let auth: Auth;
+function getFirebaseApp(): FirebaseApp {
+  if (typeof window === "undefined") {
+    // 서버 사이드에서는 더미 객체 반환 (실제로는 사용되지 않음)
+    return {} as FirebaseApp;
+  }
+  
+  if (!getApps().length) {
+    return initializeApp(firebaseConfig);
+  }
+  return getApps()[0];
+}
+
+const app = getFirebaseApp();
+
+let db: Firestore | undefined;
+let auth: Auth | undefined;
 
 if (typeof window !== "undefined") {
-  if (!getApps().length) {
-    app = initializeApp(firebaseConfig);
-  } else {
-    app = getApps()[0];
-  }
   db = getFirestore(app);
   auth = getAuth(app);
 }

@@ -11,7 +11,7 @@ export default function StudentPage() {
   const router = useRouter();
   const { conversations, addConversation, updateConversation } = useFirebase();
   const [learningConfig, setLearningConfig] = useState({
-    studentName: "",
+    studentNumber: "",
     grade: "",
     subject: "",
     learningObjective: "",
@@ -25,10 +25,10 @@ export default function StudentPage() {
         router.push("/login");
         return;
       }
-      // 세션에서 이름 가져오기
-      const userName = sessionStorage.getItem("userName");
-      if (userName) {
-        setLearningConfig((prev) => ({ ...prev, studentName: userName }));
+      // 세션에서 번호 가져오기 (선택사항)
+      const userNumber = sessionStorage.getItem("userNumber");
+      if (userNumber) {
+        setLearningConfig((prev) => ({ ...prev, studentNumber: userNumber }));
       }
     }
   }, [router]);

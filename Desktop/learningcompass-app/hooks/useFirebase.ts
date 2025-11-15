@@ -17,6 +17,7 @@ import { db } from "@/lib/firebase";
 
 export interface Conversation {
   id?: string;
+  type?: string;
   student_name: string;
   grade: string;
   subject: string;
@@ -26,6 +27,11 @@ export interface Conversation {
   safety_status: string;
   timestamp: Date | Timestamp;
   teacher_approved: boolean;
+  knowledge_title?: string;
+  knowledge_content?: string;
+  file_name?: string;
+  content_type?: string;
+  upload_date?: string | Date | Timestamp;
 }
 
 export function useFirebase() {
@@ -33,6 +39,11 @@ export function useFirebase() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (typeof window === "undefined" || !db) {
+      setLoading(false);
+      return;
+    }
+
     const q = query(
       collection(db, "conversations"),
       orderBy("timestamp", "desc"),
@@ -55,6 +66,10 @@ export function useFirebase() {
   }, []);
 
   const addConversation = async (conversation: Omit<Conversation, "id">) => {
+    if (!db) {
+      throw new Error("Firebase가 초기화되지 않았습니다.");
+    }
+    
     try {
       const data: any = {
         ...conversation,
@@ -79,6 +94,10 @@ export function useFirebase() {
     id: string,
     updates: Partial<Conversation>
   ) => {
+    if (!db) {
+      throw new Error("Firebase가 초기화되지 않았습니다.");
+    }
+    
     try {
       const docRef = doc(db, "conversations", id);
       await updateDoc(docRef, updates);
@@ -89,6 +108,10 @@ export function useFirebase() {
   };
 
   const deleteConversation = async (id: string) => {
+    if (!db) {
+      throw new Error("Firebase가 초기화되지 않았습니다.");
+    }
+    
     try {
       const docRef = doc(db, "conversations", id);
       await deleteDoc(docRef);
