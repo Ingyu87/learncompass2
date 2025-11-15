@@ -62,7 +62,8 @@ export async function POST(request: NextRequest) {
       .join("\n");
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    // 최신 모델 사용
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     // 1단계: 성취기준 분석 (교사가 선택한 교과의 성취기준 중에서 찾기)
     const analysisPrompt = `당신은 초등학교 교육과정 전문가입니다.
