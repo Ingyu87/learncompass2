@@ -73,7 +73,11 @@ export default function ChatInterface({
     if (isLoading || !question.trim()) return;
 
     if (!isConfigComplete) {
-      setSafetyWarning("모든 정보를 입력해주세요.");
+      if (!learningConfig.studentNumber) {
+        setSafetyWarning("학생 번호를 먼저 입력해주세요.");
+      } else {
+        setSafetyWarning("모든 정보를 입력해주세요.");
+      }
       return;
     }
 
@@ -158,6 +162,8 @@ export default function ChatInterface({
 
   const currentObjective = isConfigComplete
     ? `${learningConfig.grade} ${learningConfig.subject} - ${learningConfig.learningObjective}`
+    : !learningConfig.studentNumber
+    ? "학생 번호를 입력하면 AI와 대화할 수 있어요!"
     : "학습 목표를 설정하면 AI와 대화할 수 있어요!";
 
   return (

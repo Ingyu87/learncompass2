@@ -48,19 +48,23 @@ export default function StudentInterface() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  학생 번호
+                  학생 번호 <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="학생 번호를 입력하세요"
+                  placeholder="학생 번호를 입력하세요 (필수)"
                   min="1"
                   max="999"
+                  required
                   value={learningConfig.studentNumber}
                   onChange={(e) =>
                     setLearningConfig({ ...learningConfig, studentNumber: e.target.value })
                   }
                 />
+                {!learningConfig.studentNumber && (
+                  <p className="text-xs text-red-500 mt-1">학생 번호를 입력해야 질문할 수 있습니다.</p>
+                )}
               </div>
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
