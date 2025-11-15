@@ -38,17 +38,17 @@
 
 #### Firebase 설정
 ```
-NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyASBwzJNFkqorMDvUDh1yDZ9ZUPXkztxso
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=learncompass-f176d.firebaseapp.com
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=learncompass-f176d
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=learncompass-f176d.firebasestorage.app
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=86208886612
-NEXT_PUBLIC_FIREBASE_APP_ID=1:86208886612:web:885de125ea8741cd11fac1
+NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key_here
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-project.firebasestorage.app
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 ```
 
 #### Gemini API 설정
 ```
-GEMINI_API_KEY=AIzaSyB6DAz-mxJDSBbJKHTM-sINm-9vIRkd92Q
+GEMINI_API_KEY=your_gemini_api_key_here
 ```
 
 **환경 변수 추가 방법:**

@@ -7,27 +7,27 @@ Vercel 대시보드 → 프로젝트 → **Settings** → **Environment Variable
 ### Firebase 설정 (7개)
 
 1. **NEXT_PUBLIC_FIREBASE_API_KEY**
-   - 값: `AIzaSyASBwzJNFkqorMDvUDh1yDZ9ZUPXkztxso`
+   - 값: `your_firebase_api_key_here` (Firebase Console에서 복사)
 
 2. **NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN**
-   - 값: `learncompass-f176d.firebaseapp.com`
+   - 값: `your-project.firebaseapp.com` (Firebase Console에서 확인)
 
 3. **NEXT_PUBLIC_FIREBASE_PROJECT_ID**
-   - 값: `learncompass-f176d`
+   - 값: `your-project-id` (Firebase Console에서 확인)
 
 4. **NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET**
-   - 값: `learncompass-f176d.firebasestorage.app`
+   - 값: `your-project.firebasestorage.app` (Firebase Console에서 확인)
 
 5. **NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID**
-   - 값: `86208886612`
+   - 값: `your_messaging_sender_id` (Firebase Console에서 확인)
 
 6. **NEXT_PUBLIC_FIREBASE_APP_ID**
-   - 값: `1:86208886612:web:885de125ea8741cd11fac1`
+   - 값: `your_app_id` (Firebase Console에서 확인)
 
 ### Gemini API 설정 (1개)
 
 7. **GEMINI_API_KEY**
-   - 값: `AIzaSyB6DAz-mxJDSBbJKHTM-sINm-9vIRkd92Q`
+   - 값: `your_gemini_api_key_here` (Google AI Studio에서 생성)
 
 ---
 
