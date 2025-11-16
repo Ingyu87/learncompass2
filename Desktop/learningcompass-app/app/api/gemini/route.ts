@@ -4,7 +4,7 @@ import { generateAIResponse } from "@/lib/gemini";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { question, subject, grade, learningObjective } = body;
+    const { question, subject, grade, learningObjective, knowledgeContent } = body;
 
     if (!question || !subject || !grade || !learningObjective) {
       return NextResponse.json(
@@ -13,11 +13,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // RAG: 지식 내용을 컨텍스트로 전달
     const response = await generateAIResponse(
       question,
       subject,
       grade,
-      learningObjective
+      learningObjective,
+      knowledgeContent || "" // 교사가 업로드한 지식 내용
     );
 
     return NextResponse.json({ response });

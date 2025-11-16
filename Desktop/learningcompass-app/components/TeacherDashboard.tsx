@@ -20,6 +20,11 @@ export default function TeacherDashboard({
     const conversation = conversations.find((c: any) => c.id === id || c.__backendId === id);
     
     if (!currentStatus && conversation) {
+      // RAG: 선택된 지식 내용 찾기
+      const knowledgeData = conversations.filter((item: any) => item.type === "knowledge");
+      const selectedKnowledge = knowledgeData.find((k: any) => k.selected === true);
+      const knowledgeContent = selectedKnowledge?.knowledge_content || "";
+      
       // 승인 시 AI 응답 생성
       try {
         const response = await fetch("/api/gemini", {
@@ -32,6 +37,7 @@ export default function TeacherDashboard({
             subject: conversation.subject,
             grade: conversation.grade,
             learningObjective: conversation.learning_objective,
+            knowledgeContent: knowledgeContent, // RAG: 지식 내용 전달
           }),
         });
 

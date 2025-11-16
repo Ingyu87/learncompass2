@@ -13,6 +13,7 @@ interface ChatInterfaceProps {
   learningConfig: LearningConfig;
   onConversationCreate: (conversation: any) => Promise<void>;
   conversations?: any[]; // 승인된 대화 확인용 (실시간 업데이트)
+  knowledgeContent?: string; // RAG: 교사가 업로드한 지식 내용
 }
 
 interface Message {
@@ -24,6 +25,7 @@ export default function ChatInterface({
   learningConfig,
   onConversationCreate,
   conversations = [],
+  knowledgeContent = "", // RAG: 지식 내용
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([
     {

@@ -136,6 +136,7 @@ export default function StudentInterface() {
           learningConfig={learningConfig}
           onConversationCreate={addConversation}
           conversations={conversations}
+          knowledgeContent={selectedKnowledge?.knowledge_content || ""} // RAG: 선택된 지식 내용 전달
         />
         <StudentEssay
           studentNumber={learningConfig.studentNumber}
