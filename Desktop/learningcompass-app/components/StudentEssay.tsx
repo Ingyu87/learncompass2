@@ -132,12 +132,16 @@ export default function StudentEssay({
       const timeDiff = now - lastKeyTime.current;
       const lengthDiff = target.value.length - lastLength;
       lastKeyTime.current = now;
-      lastLength = target.value.length;
 
       // 100ms 이내에 5자 이상 입력되면 붙여넣기로 간주하고 롤백
       if (timeDiff < 100 && lengthDiff > 5) {
-        e.preventDefault();
-        target.value = essay; // 이전 값으로 롤백
+        // React state를 사용하여 롤백
+        setTimeout(() => {
+          setEssay(essay); // 이전 값으로 롤백
+          if (textareaRef.current) {
+            textareaRef.current.value = essay;
+          }
+        }, 0);
         const newLog = {
           type: "copy_paste",
           timestamp: new Date(),
@@ -147,6 +151,7 @@ export default function StudentEssay({
         alert("붙여넣기가 감지되어 차단되었습니다. 직접 작성해주세요.");
         return false;
       }
+      lastLength = target.value.length;
     };
 
     // 이벤트 리스너 등록
