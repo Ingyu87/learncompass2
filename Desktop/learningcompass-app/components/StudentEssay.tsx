@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useFirebase } from "@/hooks/useFirebase";
+import html2canvas from "html2canvas";
 
 interface StudentEssayProps {
   studentNumber: string;
@@ -24,6 +25,7 @@ export default function StudentEssay({
   const [mindmapData, setMindmapData] = useState<any>(null);
   const [violationLogs, setViolationLogs] = useState<Array<{ type: string; timestamp: Date; detected_text?: string }>>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const mindmapRef = useRef<HTMLDivElement>(null);
   const lastPasteTime = useRef<number>(0);
   const lastKeyTime = useRef<number>(0);
 
@@ -222,6 +224,41 @@ export default function StudentEssay({
     }
   };
 
+  const handleDownloadMindmap = async () => {
+    if (!mindmapRef.current || !mindmapData) {
+      alert("마인드맵을 다운로드할 수 없습니다.");
+      return;
+    }
+
+    try {
+      // html2canvas로 마인드맵 캡처
+      const canvas = await html2canvas(mindmapRef.current, {
+        backgroundColor: "#f9fafb", // bg-gray-50 색상
+        scale: 2, // 고해상도
+        logging: false,
+      });
+
+      // Canvas를 PNG로 변환
+      const dataUrl = canvas.toDataURL("image/png");
+      
+      // 다운로드 링크 생성
+      const link = document.createElement("a");
+      const fileName = `마인드맵_${studentNumber}_${new Date().toISOString().split("T")[0]}.png`;
+      link.download = fileName;
+      link.href = dataUrl;
+      
+      // 다운로드 실행
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      alert("마인드맵이 다운로드되었습니다!");
+    } catch (error) {
+      console.error("마인드맵 다운로드 오류:", error);
+      alert("마인드맵 다운로드에 실패했습니다. 다시 시도해주세요.");
+    }
+  };
+
   const handleSubmit = async () => {
     if (!essay.trim()) {
       alert("글을 작성해주세요.");
@@ -372,8 +409,20 @@ export default function StudentEssay({
 
         {mindmapData && (
           <div className="mt-6">
-            <h3 className="text-lg font-bold text-gray-800 mb-3">마인드맵</h3>
-            <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-bold text-gray-800">마인드맵</h3>
+              <button
+                onClick={handleDownloadMindmap}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm flex items-center space-x-2"
+              >
+                <span>📥</span>
+                <span>PNG 다운로드</span>
+              </button>
+            </div>
+            <div 
+              ref={mindmapRef}
+              className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+            >
               <MindmapVisualization data={mindmapData} />
             </div>
           </div>
