@@ -14,6 +14,7 @@ interface ChatInterfaceProps {
   onConversationCreate: (conversation: any) => Promise<void>;
   conversations?: any[]; // 승인된 대화 확인용 (실시간 업데이트)
   knowledgeContent?: string; // RAG: 교사가 업로드한 지식 내용
+  knowledgeTitle?: string; // 선택된 지식 제목
 }
 
 interface Message {
@@ -26,6 +27,7 @@ export default function ChatInterface({
   onConversationCreate,
   conversations = [],
   knowledgeContent = "", // RAG: 지식 내용
+  knowledgeTitle = "", // 선택된 지식 제목
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -170,7 +172,7 @@ export default function ChatInterface({
         ai_response: "", // 승인 전에는 빈 응답
         safety_status: safetyCheck.reason,
         teacher_approved: false,
-        knowledge_title: "",
+        knowledge_title: knowledgeTitle || "", // 선택된 지식 제목 저장
         timestamp: new Date().toISOString(),
       });
     } catch (error: any) {

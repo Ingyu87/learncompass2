@@ -226,14 +226,41 @@ export default function TeacherDashboard({
     );
     if (!selectedKnowledgeItem) return [];
 
-    // 해당 지식과 관련된 질문들 (같은 과목, 학년, 또는 지식 제목이 일치하는 경우)
-    const relatedQuestions = conversations.filter(
-      (item: any) =>
-        (item.type === "conversation" || !item.type) &&
-        item.question &&
-        (item.subject === selectedKnowledgeItem.subject ||
-          item.knowledge_title === selectedKnowledgeItem.knowledge_title)
-    );
+    // 해당 지식과 정확히 일치하는 질문들만 필터링
+    // 1. 지식 제목이 정확히 일치하는 경우
+    // 2. 같은 과목, 같은 학년, 그리고 질문 시간이 지식 업로드 시간 이후인 경우
+    const knowledgeTitle = selectedKnowledgeItem.knowledge_title;
+    const knowledgeSubject = selectedKnowledgeItem.subject;
+    const knowledgeGrade = selectedKnowledgeItem.grade;
+    const knowledgeUploadTime = selectedKnowledgeItem.upload_date
+      ? new Date(selectedKnowledgeItem.upload_date).getTime()
+      : 0;
+
+    const relatedQuestions = conversations.filter((item: any) => {
+      if (!(item.type === "conversation" || !item.type) || !item.question) {
+        return false;
+      }
+
+      // 지식 제목이 정확히 일치하는 경우
+      if (item.knowledge_title === knowledgeTitle) {
+        return true;
+      }
+
+      // 같은 과목, 같은 학년인 경우
+      if (item.subject === knowledgeSubject && item.grade === knowledgeGrade) {
+        // 질문 시간이 지식 업로드 시간 이후인 경우만
+        const questionTime = item.timestamp
+          ? (item.timestamp instanceof Date
+              ? item.timestamp.getTime()
+              : (item.timestamp as any).toDate?.().getTime() || new Date(item.timestamp).getTime())
+          : 0;
+        
+        // 지식이 업로드된 이후의 질문만 포함
+        return questionTime >= knowledgeUploadTime;
+      }
+
+      return false;
+    });
 
     const questionTexts = relatedQuestions.map((item: any) => item.question).join(" ");
     const wordMap = extractWords(questionTexts, 2);

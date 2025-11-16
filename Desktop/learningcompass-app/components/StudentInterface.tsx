@@ -132,12 +132,13 @@ export default function StudentInterface() {
         </div>
       </div>
       <div className="lg:col-span-2 space-y-6">
-        <ChatInterface
-          learningConfig={learningConfig}
-          onConversationCreate={addConversation}
-          conversations={conversations}
-          knowledgeContent={selectedKnowledge?.knowledge_content || ""} // RAG: 선택된 지식 내용 전달
-        />
+            <ChatInterface
+              learningConfig={learningConfig}
+              onConversationCreate={addConversation}
+              conversations={conversations}
+              knowledgeContent={selectedKnowledge?.knowledge_content || ""} // RAG: 선택된 지식 내용 전달
+              knowledgeTitle={selectedKnowledge?.knowledge_title || ""} // 선택된 지식 제목 전달
+            />
         <StudentEssay
           studentNumber={learningConfig.studentNumber}
           grade={learningConfig.grade}
