@@ -49,9 +49,9 @@ export default function StudentEssay({
 
     const handlePaste = (e: ClipboardEvent) => {
       e.preventDefault();
+      e.stopPropagation();
       const now = Date.now();
       if (now - lastPasteTime.current > 1000) {
-        // 1초 내 중복 방지
         lastPasteTime.current = now;
         const newLog = {
           type: "copy_paste",
@@ -61,71 +61,121 @@ export default function StudentEssay({
         setViolationLogs((prev) => [...prev, newLog]);
         alert("복사한 내용을 붙여넣을 수 없습니다. 직접 작성해주세요.");
       }
+      return false;
     };
 
     const handleCopy = (e: ClipboardEvent) => {
       if (textarea === document.activeElement) {
         e.preventDefault();
+        e.stopPropagation();
         alert("복사할 수 없습니다.");
+        return false;
       }
     };
 
     const handleCut = (e: ClipboardEvent) => {
       if (textarea === document.activeElement) {
         e.preventDefault();
+        e.stopPropagation();
         alert("잘라내기를 할 수 없습니다.");
+        return false;
       }
     };
 
-    // 키보드 단축키 차단 (Ctrl+V, Ctrl+C, Ctrl+X)
+    // 키보드 단축키 차단 (Ctrl+V, Ctrl+C, Ctrl+X, Shift+Insert)
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && (e.key === "v" || e.key === "c" || e.key === "x")) {
+      const isPaste = (e.ctrlKey || e.metaKey) && (e.key === "v" || e.key === "V");
+      const isCopy = (e.ctrlKey || e.metaKey) && (e.key === "c" || e.key === "C");
+      const isCut = (e.ctrlKey || e.metaKey) && (e.key === "x" || e.key === "X");
+      const isShiftInsert = e.shiftKey && e.key === "Insert";
+
+      if (isPaste || isShiftInsert) {
         e.preventDefault();
-        if (e.key === "v") {
-          const now = Date.now();
-          if (now - lastPasteTime.current > 1000) {
-            lastPasteTime.current = now;
-            const newLog = {
-              type: "copy_paste",
-              timestamp: new Date(),
-              detected_text: "Ctrl+V 시도 감지",
-            };
-            setViolationLogs((prev) => [...prev, newLog]);
-            alert("복사한 내용을 붙여넣을 수 없습니다. 직접 작성해주세요.");
-          }
+        e.stopPropagation();
+        const now = Date.now();
+        if (now - lastPasteTime.current > 1000) {
+          lastPasteTime.current = now;
+          const newLog = {
+            type: "copy_paste",
+            timestamp: new Date(),
+            detected_text: "붙여넣기 시도 감지 (키보드)",
+          };
+          setViolationLogs((prev) => [...prev, newLog]);
+          alert("복사한 내용을 붙여넣을 수 없습니다. 직접 작성해주세요.");
+        }
+        return false;
+      }
+
+      if (isCopy || isCut) {
+        if (textarea === document.activeElement) {
+          e.preventDefault();
+          e.stopPropagation();
+          alert(isCopy ? "복사할 수 없습니다." : "잘라내기를 할 수 없습니다.");
+          return false;
         }
       }
     };
 
-    // 입력 속도 체크 (너무 빠른 입력은 복사/붙여넣기 의심)
-    const handleInput = (e: Event) => {
-      const now = Date.now();
-      const timeDiff = now - lastKeyTime.current;
-      lastKeyTime.current = now;
-
-      // 50ms 이내에 10자 이상 입력되면 의심
-      if (timeDiff < 50 && (e.target as HTMLTextAreaElement).value.length - essay.length > 10) {
-        const newLog = {
-          type: "copy_paste",
-          timestamp: new Date(),
-          detected_text: "빠른 입력 감지 (의심)",
-        };
-        setViolationLogs((prev) => [...prev, newLog]);
+    // 우클릭 메뉴 차단
+    const handleContextMenu = (e: MouseEvent) => {
+      if (textarea === e.target || textarea.contains(e.target as Node)) {
+        e.preventDefault();
+        return false;
       }
     };
 
-    textarea.addEventListener("paste", handlePaste);
-    textarea.addEventListener("copy", handleCopy);
-    textarea.addEventListener("cut", handleCut);
-    textarea.addEventListener("keydown", handleKeyDown);
-    textarea.addEventListener("input", handleInput);
+    // 입력 속도 체크 및 붙여넣기 감지
+    let lastLength = essay.length;
+    const handleInput = (e: Event) => {
+      const target = e.target as HTMLTextAreaElement;
+      const now = Date.now();
+      const timeDiff = now - lastKeyTime.current;
+      const lengthDiff = target.value.length - lastLength;
+      lastKeyTime.current = now;
+      lastLength = target.value.length;
+
+      // 100ms 이내에 5자 이상 입력되면 붙여넣기로 간주하고 롤백
+      if (timeDiff < 100 && lengthDiff > 5) {
+        e.preventDefault();
+        target.value = essay; // 이전 값으로 롤백
+        const newLog = {
+          type: "copy_paste",
+          timestamp: new Date(),
+          detected_text: "빠른 입력 감지 - 붙여넣기 차단",
+        };
+        setViolationLogs((prev) => [...prev, newLog]);
+        alert("붙여넣기가 감지되어 차단되었습니다. 직접 작성해주세요.");
+        return false;
+      }
+    };
+
+    // 이벤트 리스너 등록
+    textarea.addEventListener("paste", handlePaste, true);
+    textarea.addEventListener("copy", handleCopy, true);
+    textarea.addEventListener("cut", handleCut, true);
+    textarea.addEventListener("keydown", handleKeyDown, true);
+    textarea.addEventListener("input", handleInput, true);
+    textarea.addEventListener("contextmenu", handleContextMenu, true);
+
+    // 전역 이벤트도 차단 (더 강력한 방지)
+    const handleGlobalPaste = (e: ClipboardEvent) => {
+      if (textarea === document.activeElement) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+    };
+
+    document.addEventListener("paste", handleGlobalPaste, true);
 
     return () => {
-      textarea.removeEventListener("paste", handlePaste);
-      textarea.removeEventListener("copy", handleCopy);
-      textarea.removeEventListener("cut", handleCut);
-      textarea.removeEventListener("keydown", handleKeyDown);
-      textarea.removeEventListener("input", handleInput);
+      textarea.removeEventListener("paste", handlePaste, true);
+      textarea.removeEventListener("copy", handleCopy, true);
+      textarea.removeEventListener("cut", handleCut, true);
+      textarea.removeEventListener("keydown", handleKeyDown, true);
+      textarea.removeEventListener("input", handleInput, true);
+      textarea.removeEventListener("contextmenu", handleContextMenu, true);
+      document.removeEventListener("paste", handleGlobalPaste, true);
     };
   }, [essay]);
 
@@ -277,6 +327,31 @@ export default function StudentEssay({
             value={essay}
             onChange={handleEssayChange}
             disabled={isSubmitting}
+            onPaste={(e) => {
+              e.preventDefault();
+              const now = Date.now();
+              if (now - lastPasteTime.current > 1000) {
+                lastPasteTime.current = now;
+                const newLog = {
+                  type: "copy_paste",
+                  timestamp: new Date(),
+                  detected_text: "붙여넣기 시도 감지 (React)",
+                };
+                setViolationLogs((prev) => [...prev, newLog]);
+                alert("복사한 내용을 붙여넣을 수 없습니다. 직접 작성해주세요.");
+              }
+            }}
+            onCopy={(e) => {
+              e.preventDefault();
+              alert("복사할 수 없습니다.");
+            }}
+            onCut={(e) => {
+              e.preventDefault();
+              alert("잘라내기를 할 수 없습니다.");
+            }}
+            onContextMenu={(e) => {
+              e.preventDefault();
+            }}
           />
           <div className="mt-2 flex items-center justify-between">
             <p className="text-xs text-gray-500">
