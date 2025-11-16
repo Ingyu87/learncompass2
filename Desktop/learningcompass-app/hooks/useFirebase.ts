@@ -42,6 +42,17 @@ export interface Conversation {
     medium: string;
     low: string;
   };
+  // 글 작성 및 마인드맵 관련 필드
+  student_essay?: string; // 학생이 작성한 글
+  mindmap_data?: any; // 마인드맵 데이터 (JSON)
+  essay_submitted?: boolean; // 글 제출 여부
+  essay_timestamp?: Date | Timestamp; // 글 작성 시간
+  // 복사/비속어 감지 로그
+  violation_logs?: Array<{
+    type: "copy_paste" | "profanity";
+    timestamp: Date | Timestamp;
+    detected_text?: string;
+  }>;
 }
 
 export function useFirebase() {

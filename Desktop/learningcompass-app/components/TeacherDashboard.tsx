@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useMemo, useEffect } from "react";
 import { Conversation, useFirebase } from "@/hooks/useFirebase";
 
 interface TeacherDashboardProps {
@@ -13,6 +14,8 @@ export default function TeacherDashboard({
   onApprovalToggle,
   onLogout,
 }: TeacherDashboardProps) {
+  const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"questions" | "essays">("questions");
   const handleApprovalToggle = async (id: string, currentStatus: boolean) => {
     const conversation = conversations.find((c: any) => c.id === id || c.__backendId === id);
     
@@ -91,6 +94,44 @@ export default function TeacherDashboard({
     link.click();
   };
 
+  // 학생 목록 추출
+  const students = useMemo(() => {
+    const studentSet = new Set<string>();
+    conversations.forEach((item: any) => {
+      if (item.student_name) {
+        studentSet.add(item.student_name);
+      }
+    });
+    return Array.from(studentSet).sort((a, b) => parseInt(a) - parseInt(b));
+  }, [conversations]);
+
+  // 선택된 학생이 없으면 첫 번째 학생 선택
+  useEffect(() => {
+    if (!selectedStudent && students.length > 0) {
+      setSelectedStudent(students[0]);
+    }
+  }, [students, selectedStudent]);
+
+  // 선택된 학생의 데이터 필터링
+  const studentData = useMemo(() => {
+    if (!selectedStudent) return { questions: [], essays: [] };
+    
+    const questions = conversations.filter(
+      (item: any) =>
+        (item.type === "conversation" || !item.type) &&
+        item.student_name === selectedStudent
+    );
+    
+    const essays = conversations.filter(
+      (item: any) =>
+        item.type === "essay" &&
+        item.student_name === selectedStudent &&
+        item.essay_submitted === true
+    );
+    
+    return { questions, essays };
+  }, [conversations, selectedStudent]);
+
   const conversationData = conversations.filter(
     (item: any) => item.type === "conversation" || !item.type
   );
@@ -119,10 +160,193 @@ export default function TeacherDashboard({
         </div>
       </div>
 
+      {/* 학생별 탭 */}
+      <div className="bg-white rounded-xl card-shadow p-6 mb-6">
+        <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
+          <span className="mr-2">👥</span> 학생별 관리
+        </h2>
+        <div className="flex flex-wrap gap-2 mb-4">
+          {students.map((student) => (
+            <button
+              key={student}
+              onClick={() => setSelectedStudent(student)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                selectedStudent === student
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              학생 {student}
+            </button>
+          ))}
+        </div>
+        
+        {selectedStudent && (
+          <div className="border-t pt-4">
+            <div className="flex space-x-2 mb-4">
+              <button
+                onClick={() => setActiveTab("questions")}
+                className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                  activeTab === "questions"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700"
+                }`}
+              >
+                질문 ({studentData.questions.length})
+              </button>
+              <button
+                onClick={() => setActiveTab("essays")}
+                className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                  activeTab === "essays"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700"
+                }`}
+              >
+                글 작성 ({studentData.essays.length})
+              </button>
+            </div>
+
+            {activeTab === "questions" && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left font-medium text-gray-700">시간</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-700">과목</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-700">질문</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-700">AI 응답</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-700">위반</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-700">승인</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {studentData.questions.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                          질문이 없습니다.
+                        </td>
+                      </tr>
+                    ) : (
+                      studentData.questions.map((item: any) => {
+                        const timestamp =
+                          item.timestamp instanceof Date
+                            ? item.timestamp.toLocaleString("ko-KR")
+                            : new Date((item.timestamp as any).toDate?.() || item.timestamp).toLocaleString("ko-KR");
+                        const hasViolations = (item.violation_logs && item.violation_logs.length > 0) || 
+                                            item.safety_status !== "안전";
+                        return (
+                          <tr key={item.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 text-gray-600">{timestamp}</td>
+                            <td className="px-4 py-3">{item.subject}</td>
+                            <td className="px-4 py-3 max-w-xs truncate" title={item.question}>
+                              {item.question}
+                            </td>
+                            <td className="px-4 py-3 max-w-xs truncate" title={item.ai_response}>
+                              {item.ai_response || "-"}
+                            </td>
+                            <td className="px-4 py-3">
+                              {hasViolations && (
+                                <div className="flex items-center space-x-1">
+                                  {item.violation_logs?.some((log: any) => log.type === "copy_paste") && (
+                                    <span title="복사/붙여넣기 시도" className="text-red-500">📋</span>
+                                  )}
+                                  {item.violation_logs?.some((log: any) => log.type === "profanity") && (
+                                    <span title="비속어 사용" className="text-red-500">🚫</span>
+                                  )}
+                                  {item.safety_status !== "안전" && (
+                                    <span title={item.safety_status} className="text-orange-500">⚠️</span>
+                                  )}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3">
+                              <button
+                                onClick={() =>
+                                  item.id && handleApprovalToggle(item.id, item.teacher_approved)
+                                }
+                                className={`px-3 py-1 text-xs rounded ${
+                                  item.teacher_approved
+                                    ? "bg-green-600 text-white"
+                                    : "bg-gray-200 text-gray-700"
+                                } hover:opacity-80`}
+                              >
+                                {item.teacher_approved ? "승인됨" : "승인"}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {activeTab === "essays" && (
+              <div className="space-y-4">
+                {studentData.essays.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    제출된 글이 없습니다.
+                  </div>
+                ) : (
+                  studentData.essays.map((essay: any) => {
+                    const timestamp =
+                      essay.essay_timestamp instanceof Date
+                        ? essay.essay_timestamp.toLocaleString("ko-KR")
+                        : new Date((essay.essay_timestamp as any)?.toDate?.() || essay.essay_timestamp || essay.timestamp).toLocaleString("ko-KR");
+                    const hasViolations = essay.violation_logs && essay.violation_logs.length > 0;
+                    
+                    return (
+                      <div key={essay.id} className="border border-gray-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-sm text-gray-600">{timestamp}</span>
+                            {hasViolations && (
+                              <div className="flex items-center space-x-1">
+                                {essay.violation_logs.some((log: any) => log.type === "copy_paste") && (
+                                  <span title="복사/붙여넣기 시도" className="text-red-500 text-lg">📋</span>
+                                )}
+                                {essay.violation_logs.some((log: any) => log.type === "profanity") && (
+                                  <span title="비속어 사용" className="text-red-500 text-lg">🚫</span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          <span className="text-xs text-gray-500">
+                            {essay.violation_logs?.length || 0}건의 위반 감지
+                          </span>
+                        </div>
+                        <div className="mb-3">
+                          <h4 className="font-semibold text-gray-800 mb-2">작성한 글:</h4>
+                          <div className="bg-gray-50 p-3 rounded border border-gray-200">
+                            <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                              {essay.student_essay}
+                            </p>
+                          </div>
+                        </div>
+                        {essay.mindmap_data && (
+                          <div>
+                            <h4 className="font-semibold text-gray-800 mb-2">마인드맵:</h4>
+                            <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                              <MindmapVisualization data={essay.mindmap_data} />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 전체 대화 기록 (기존) */}
       <div className="bg-white rounded-xl card-shadow p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-gray-800 flex items-center">
-            <span className="mr-2">👩‍🏫</span> 대화 기록 관리
+            <span className="mr-2">📋</span> 전체 대화 기록
           </h2>
           <div className="flex items-center space-x-4">
             <span className="text-sm text-gray-600">
@@ -210,6 +434,95 @@ export default function TeacherDashboard({
       </div>
       </div>
     </>
+  );
+}
+
+// 마인드맵 시각화 컴포넌트
+function MindmapVisualization({ data }: { data: any }) {
+  if (!data || !data.root) {
+    return <p className="text-gray-500">마인드맵 데이터가 없습니다.</p>;
+  }
+
+  return (
+    <div className="mindmap-container">
+      <div className="mindmap-root">
+        <div className="mindmap-node root-node">
+          <div className="font-bold text-lg">{data.root.name || "주제"}</div>
+        </div>
+        {data.root.children && data.root.children.length > 0 && (
+          <div className="mindmap-branches">
+            {data.root.children.map((child: any, idx: number) => (
+              <div key={idx} className="mindmap-branch">
+                <div className="mindmap-node branch-node">
+                  <div className="font-semibold">{child.name}</div>
+                  {child.children && child.children.length > 0 && (
+                    <div className="mindmap-sub-branches">
+                      {child.children.map((subChild: any, subIdx: number) => (
+                        <div key={subIdx} className="mindmap-sub-node">
+                          {subChild.name}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <style jsx>{`
+        .mindmap-container {
+          width: 100%;
+          overflow-x: auto;
+          padding: 20px;
+        }
+        .mindmap-root {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+        .mindmap-node {
+          padding: 12px 20px;
+          border-radius: 8px;
+          margin: 8px;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .root-node {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          font-size: 18px;
+          margin-bottom: 20px;
+        }
+        .mindmap-branches {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: center;
+          gap: 20px;
+        }
+        .mindmap-branch {
+          flex: 1;
+          min-width: 200px;
+          max-width: 300px;
+        }
+        .branch-node {
+          background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+          color: white;
+        }
+        .mindmap-sub-branches {
+          margin-top: 10px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+        .mindmap-sub-node {
+          padding: 8px 12px;
+          background: #e0e7ff;
+          border-radius: 6px;
+          font-size: 14px;
+          color: #4b5563;
+        }
+      `}</style>
+    </div>
   );
 }
 

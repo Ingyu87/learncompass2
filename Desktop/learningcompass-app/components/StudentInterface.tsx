@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import ChatInterface from "@/components/ChatInterface";
+import StudentEssay from "@/components/StudentEssay";
 import { useFirebase } from "@/hooks/useFirebase";
 
 export default function StudentInterface() {
@@ -130,10 +131,17 @@ export default function StudentInterface() {
           )}
         </div>
       </div>
-      <div className="lg:col-span-2">
+      <div className="lg:col-span-2 space-y-6">
         <ChatInterface
           learningConfig={learningConfig}
           onConversationCreate={addConversation}
+          conversations={conversations}
+        />
+        <StudentEssay
+          studentNumber={learningConfig.studentNumber}
+          grade={learningConfig.grade}
+          subject={learningConfig.subject}
+          learningObjective={learningConfig.learningObjective}
           conversations={conversations}
         />
       </div>
