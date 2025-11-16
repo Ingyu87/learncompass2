@@ -17,6 +17,7 @@ import { db } from "@/lib/firebase";
 
 export interface Conversation {
   id?: string;
+  __backendId?: string; // Firebase 내부 ID (타입 호환성)
   type?: string;
   student_name: string;
   grade: string;
