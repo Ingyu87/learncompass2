@@ -19,6 +19,8 @@ export default function TeacherDashboard({
 }: TeacherDashboardProps) {
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"questions" | "essays">("questions");
+  const [mainTab, setMainTab] = useState<"students" | "knowledge">("students");
+  const [selectedKnowledge, setSelectedKnowledge] = useState<string | null>(null);
   const handleApprovalToggle = async (id: string, currentStatus: boolean) => {
     const conversation = conversations.find((c: any) => c.id === id || c.__backendId === id);
     
@@ -203,31 +205,57 @@ export default function TeacherDashboard({
     return { questions, essays };
   }, [conversations, selectedStudent]);
 
-  // 질문 워드 클라우드 데이터 생성
-  const questionWordCloud = useMemo(() => {
-    const questionTexts = conversations
-      .filter((item: any) => (item.type === "conversation" || !item.type) && item.question)
-      .map((item: any) => item.question)
-      .join(" ");
+  // 지식 목록 추출
+  const knowledgeList = useMemo(() => {
+    return conversations.filter((item: any) => item.type === "knowledge");
+  }, [conversations]);
 
+  // 선택된 지식이 없으면 첫 번째 지식 선택
+  useEffect(() => {
+    if (mainTab === "knowledge" && !selectedKnowledge && knowledgeList.length > 0) {
+      setSelectedKnowledge(knowledgeList[0].id || knowledgeList[0].__backendId || null);
+    }
+  }, [mainTab, selectedKnowledge, knowledgeList]);
+
+  // 선택된 지식에 대한 질문 워드 클라우드 데이터 생성
+  const questionWordCloud = useMemo(() => {
+    if (!selectedKnowledge) return [];
+
+    const selectedKnowledgeItem = knowledgeList.find(
+      (k: any) => (k.id || k.__backendId) === selectedKnowledge
+    );
+    if (!selectedKnowledgeItem) return [];
+
+    // 해당 지식과 관련된 질문들 (같은 과목, 학년, 또는 지식 제목이 일치하는 경우)
+    const relatedQuestions = conversations.filter(
+      (item: any) =>
+        (item.type === "conversation" || !item.type) &&
+        item.question &&
+        (item.subject === selectedKnowledgeItem.subject ||
+          item.knowledge_title === selectedKnowledgeItem.knowledge_title)
+    );
+
+    const questionTexts = relatedQuestions.map((item: any) => item.question).join(" ");
     const wordMap = extractWords(questionTexts, 2);
     return Array.from(wordMap.entries())
       .map(([text, value]) => ({ text, value }))
       .filter((word) => word.value > 0);
-  }, [conversations]);
+  }, [conversations, selectedKnowledge, knowledgeList]);
 
-  // 지식 구성 워드 클라우드 데이터 생성
+  // 선택된 지식 구성 워드 클라우드 데이터 생성
   const knowledgeWordCloud = useMemo(() => {
-    const knowledgeTexts = conversations
-      .filter((item: any) => item.type === "knowledge" && item.knowledge_content)
-      .map((item: any) => item.knowledge_content)
-      .join(" ");
+    if (!selectedKnowledge) return [];
 
-    const wordMap = extractWords(knowledgeTexts, 2);
+    const selectedKnowledgeItem = knowledgeList.find(
+      (k: any) => (k.id || k.__backendId) === selectedKnowledge
+    );
+    if (!selectedKnowledgeItem || !selectedKnowledgeItem.knowledge_content) return [];
+
+    const wordMap = extractWords(selectedKnowledgeItem.knowledge_content, 2);
     return Array.from(wordMap.entries())
       .map(([text, value]) => ({ text, value }))
       .filter((word) => word.value > 0);
-  }, [conversations]);
+  }, [selectedKnowledge, knowledgeList]);
 
   return (
     <>
@@ -253,8 +281,40 @@ export default function TeacherDashboard({
         </div>
       </div>
 
-      {/* 학생별 탭 */}
+      {/* 메인 탭 (학생별 / 지식별) */}
       <div className="bg-white rounded-xl card-shadow p-6 mb-6">
+        <div className="flex space-x-2 mb-6">
+          <button
+            onClick={() => {
+              setMainTab("students");
+              setSelectedKnowledge(null);
+            }}
+            className={`px-4 py-2 rounded-lg text-sm font-medium ${
+              mainTab === "students"
+                ? "bg-blue-600 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+          >
+            학생별 관리
+          </button>
+          <button
+            onClick={() => {
+              setMainTab("knowledge");
+              setSelectedStudent(null);
+            }}
+            className={`px-4 py-2 rounded-lg text-sm font-medium ${
+              mainTab === "knowledge"
+                ? "bg-blue-600 text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+          >
+            지식별 분석
+          </button>
+        </div>
+
+        {mainTab === "students" && (
+          <>
+            {/* 학생별 탭 */}
         <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
           <span className="mr-2">👥</span> 학생별 관리
         </h2>
@@ -461,20 +521,61 @@ export default function TeacherDashboard({
             )}
           </div>
         )}
-      </div>
+          </>
+        )}
 
-      {/* 워드 클라우드 섹션 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <WordCloud
-          words={questionWordCloud}
-          title="많이 물어보는 질문"
-          maxWords={50}
-        />
-        <WordCloud
-          words={knowledgeWordCloud}
-          title="지식 구성"
-          maxWords={50}
-        />
+        {mainTab === "knowledge" && (
+          <>
+            {/* 지식 목록 */}
+            <div className="mb-6">
+              <h3 className="text-md font-semibold text-gray-700 mb-3">지식 선택</h3>
+              <div className="flex flex-wrap gap-2">
+                {knowledgeList.length === 0 ? (
+                  <p className="text-gray-500 text-sm">등록된 지식이 없습니다.</p>
+                ) : (
+                  knowledgeList.map((knowledge: any) => {
+                    const knowledgeId = knowledge.id || knowledge.__backendId;
+                    return (
+                      <button
+                        key={knowledgeId}
+                        onClick={() => setSelectedKnowledge(knowledgeId)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                          selectedKnowledge === knowledgeId
+                            ? "bg-blue-600 text-white"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        {knowledge.knowledge_title || "제목 없음"}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* 선택된 지식에 대한 워드 클라우드 */}
+            {selectedKnowledge && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <WordCloud
+                  words={questionWordCloud}
+                  title="많이 물어보는 질문"
+                  maxWords={50}
+                />
+                <WordCloud
+                  words={knowledgeWordCloud}
+                  title="지식 구성"
+                  maxWords={50}
+                />
+              </div>
+            )}
+
+            {!selectedKnowledge && knowledgeList.length > 0 && (
+              <div className="text-center py-8 text-gray-500">
+                지식을 선택하면 워드 클라우드를 확인할 수 있습니다.
+              </div>
+            )}
+          </>
+        )}
       </div>
     </>
   );
