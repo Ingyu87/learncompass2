@@ -42,18 +42,21 @@ export default function WordCloud({ words, title, maxWords = 50 }: WordCloudProp
   return (
     <div className="bg-white rounded-xl card-shadow p-6">
       <h3 className="text-lg font-bold text-gray-800 mb-4">{title}</h3>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 items-center" style={{ transform: 'none' }}>
         {processedWords.map((word, idx) => (
           <span
             key={`${word.text}-${idx}`}
-            className="inline-block px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 transition-all cursor-pointer"
+            className="inline-block px-3 py-1.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 transition-all cursor-pointer"
             style={{
               fontSize: `${word.fontSize}px`,
               fontWeight: word.value > 3 ? "bold" : "normal",
+              transform: 'none',
+              rotate: '0deg',
+              position: 'relative',
             }}
             title={`${word.text}: ${word.value}회`}
           >
-            {word.text} ({word.value})
+            {word.text} <span className="text-xs opacity-75">({word.value})</span>
           </span>
         ))}
       </div>

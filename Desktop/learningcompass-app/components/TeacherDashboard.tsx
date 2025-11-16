@@ -281,9 +281,9 @@ export default function TeacherDashboard({
         </div>
       </div>
 
-      {/* 메인 탭 (학생별 / 지식별) */}
+      {/* 상단 탭 (학생별 / 지식별) */}
       <div className="bg-white rounded-xl card-shadow p-6 mb-6">
-        <div className="flex space-x-2 mb-6">
+        <div className="flex flex-wrap gap-2 mb-6">
           <button
             onClick={() => {
               setMainTab("students");
@@ -297,19 +297,28 @@ export default function TeacherDashboard({
           >
             학생별 관리
           </button>
-          <button
-            onClick={() => {
-              setMainTab("knowledge");
-              setSelectedStudent(null);
-            }}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${
-              mainTab === "knowledge"
-                ? "bg-blue-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            지식별 분석
-          </button>
+          {/* 지식별 탭 - 각 지식마다 탭 생성 */}
+          {knowledgeList.map((knowledge: any) => {
+            const knowledgeId = knowledge.id || knowledge.__backendId;
+            const isSelected = mainTab === "knowledge" && selectedKnowledge === knowledgeId;
+            return (
+              <button
+                key={knowledgeId}
+                onClick={() => {
+                  setMainTab("knowledge");
+                  setSelectedKnowledge(knowledgeId);
+                  setSelectedStudent(null);
+                }}
+                className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                  isSelected
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                {knowledge.knowledge_title || "제목 없음"}
+              </button>
+            );
+          })}
         </div>
 
         {mainTab === "students" && (
@@ -524,57 +533,34 @@ export default function TeacherDashboard({
           </>
         )}
 
-        {mainTab === "knowledge" && (
+        {mainTab === "knowledge" && selectedKnowledge && (
           <>
-            {/* 지식 목록 */}
-            <div className="mb-6">
-              <h3 className="text-md font-semibold text-gray-700 mb-3">지식 선택</h3>
-              <div className="flex flex-wrap gap-2">
-                {knowledgeList.length === 0 ? (
-                  <p className="text-gray-500 text-sm">등록된 지식이 없습니다.</p>
-                ) : (
-                  knowledgeList.map((knowledge: any) => {
-                    const knowledgeId = knowledge.id || knowledge.__backendId;
-                    return (
-                      <button
-                        key={knowledgeId}
-                        onClick={() => setSelectedKnowledge(knowledgeId)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                          selectedKnowledge === knowledgeId
-                            ? "bg-blue-600 text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                        }`}
-                      >
-                        {knowledge.knowledge_title || "제목 없음"}
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-
             {/* 선택된 지식에 대한 워드 클라우드 */}
-            {selectedKnowledge && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <WordCloud
-                  words={questionWordCloud}
-                  title="많이 물어보는 질문"
-                  maxWords={50}
-                />
-                <WordCloud
-                  words={knowledgeWordCloud}
-                  title="지식 구성"
-                  maxWords={50}
-                />
-              </div>
-            )}
-
-            {!selectedKnowledge && knowledgeList.length > 0 && (
-              <div className="text-center py-8 text-gray-500">
-                지식을 선택하면 워드 클라우드를 확인할 수 있습니다.
-              </div>
-            )}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <WordCloud
+                words={questionWordCloud}
+                title="많이 물어보는 질문"
+                maxWords={50}
+              />
+              <WordCloud
+                words={knowledgeWordCloud}
+                title="지식 구성"
+                maxWords={50}
+              />
+            </div>
           </>
+        )}
+
+        {mainTab === "knowledge" && !selectedKnowledge && knowledgeList.length > 0 && (
+          <div className="text-center py-8 text-gray-500">
+            상단에서 지식을 선택하면 워드 클라우드를 확인할 수 있습니다.
+          </div>
+        )}
+
+        {mainTab === "knowledge" && knowledgeList.length === 0 && (
+          <div className="text-center py-8 text-gray-500">
+            등록된 지식이 없습니다.
+          </div>
         )}
       </div>
     </>
