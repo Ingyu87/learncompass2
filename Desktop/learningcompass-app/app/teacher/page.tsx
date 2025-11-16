@@ -8,7 +8,7 @@ import { useFirebase } from "@/hooks/useFirebase";
 
 export default function TeacherPage() {
   const router = useRouter();
-  const { conversations, updateConversation } = useFirebase();
+  const { conversations, updateConversation, deleteConversation } = useFirebase();
 
   useEffect(() => {
     // 로그인 확인
@@ -23,6 +23,10 @@ export default function TeacherPage() {
 
   const handleApprovalToggle = async (id: string, updates: any) => {
     await updateConversation(id, updates);
+  };
+
+  const handleDeleteConversation = async (id: string) => {
+    await deleteConversation(id);
   };
 
   const handleLogout = () => {
@@ -40,6 +44,7 @@ export default function TeacherPage() {
         <TeacherDashboard
           conversations={conversations}
           onApprovalToggle={handleApprovalToggle}
+          onDeleteConversation={handleDeleteConversation}
         />
       </main>
     </div>

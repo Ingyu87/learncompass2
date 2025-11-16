@@ -8,7 +8,7 @@ import { useFirebase } from "@/hooks/useFirebase";
 
 export default function TeacherInterface() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const { conversations, updateConversation } = useFirebase();
+  const { conversations, updateConversation, deleteConversation } = useFirebase();
 
   const handleLogin = () => {
     setIsLoggedIn(true);
@@ -22,6 +22,10 @@ export default function TeacherInterface() {
     await updateConversation(id, updates);
   };
 
+  const handleDeleteConversation = async (id: string) => {
+    await deleteConversation(id);
+  };
+
   if (!isLoggedIn) {
     return <TeacherLogin onLogin={handleLogin} />;
   }
@@ -31,11 +35,13 @@ export default function TeacherInterface() {
       <TeacherDashboard
         conversations={conversations}
         onApprovalToggle={handleApprovalToggle}
+        onDeleteConversation={handleDeleteConversation}
         onLogout={handleLogout}
       />
       <KnowledgeManagement conversations={conversations} />
     </div>
   );
 }
+
 
 

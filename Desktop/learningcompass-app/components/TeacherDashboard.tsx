@@ -6,12 +6,14 @@ import { Conversation, useFirebase } from "@/hooks/useFirebase";
 interface TeacherDashboardProps {
   conversations: Conversation[];
   onApprovalToggle: (id: string, updates: Partial<Conversation>) => Promise<void>;
+  onDeleteConversation?: (id: string) => Promise<void>;
   onLogout?: () => void;
 }
 
 export default function TeacherDashboard({
   conversations,
   onApprovalToggle,
+  onDeleteConversation,
   onLogout,
 }: TeacherDashboardProps) {
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
@@ -64,43 +66,95 @@ export default function TeacherDashboard({
     }
   };
 
-  const exportData = () => {
-    const conversationData = conversations.filter(
-      (item: any) => item.type === "conversation" || !item.type
+  // 학생별 자료 내보내기
+  const exportStudentData = (studentNumber: string) => {
+    const studentConversations = conversations.filter(
+      (item: any) =>
+        (item.type === "conversation" || !item.type) &&
+        item.student_name === studentNumber
     );
-    const csvContent = [
-      ["시간", "학생번호", "학년", "과목", "참고자료", "질문", "AI응답", "안전성", "승인여부"],
-      ...conversationData.map((item) => {
+    
+    const studentEssays = conversations.filter(
+      (item: any) =>
+        item.type === "essay" &&
+        item.student_name === studentNumber &&
+        item.essay_submitted === true
+    );
+
+    // 질문 데이터
+    const questionsData = [
+      ["시간", "과목", "참고자료", "질문", "AI응답", "안전성", "승인여부"],
+      ...studentConversations.map((item) => {
         const timestamp =
           item.timestamp instanceof Date
             ? item.timestamp.toLocaleString("ko-KR")
             : new Date((item.timestamp as any).toDate?.() || item.timestamp).toLocaleString("ko-KR");
         return [
           timestamp,
-                    item.student_name,
-                    item.grade,
-                    item.subject,
-                    item.knowledge_title || "없음",
+          item.subject,
+          item.knowledge_title || "없음",
           item.question,
-          item.ai_response,
+          item.ai_response || "",
           item.safety_status,
           item.teacher_approved ? "승인됨" : "미승인",
         ];
       }),
-    ]
-      .map((row) => row.map((cell) => `"${cell}"`).join(","))
-      .join("\n");
+    ];
+
+    // 글 작성 데이터
+    const essaysData = [
+      ["시간", "작성한 글", "위반 횟수"],
+      ...studentEssays.map((item) => {
+        const timestamp =
+          item.essay_timestamp instanceof Date
+            ? item.essay_timestamp.toLocaleString("ko-KR")
+            : new Date((item.essay_timestamp as any)?.toDate?.() || item.essay_timestamp || item.timestamp).toLocaleString("ko-KR");
+        return [
+          timestamp,
+          item.student_essay || "",
+          (item.violation_logs?.length || 0).toString(),
+        ];
+      }),
+    ];
+
+    // CSV 생성
+    const csvContent = [
+      `학생 ${studentNumber} 자료`,
+      "",
+      "=== 질문 기록 ===",
+      ...questionsData.map((row) => row.map((cell) => `"${cell}"`).join(",")),
+      "",
+      "=== 글 작성 기록 ===",
+      ...essaysData.map((row) => row.map((cell) => `"${cell}"`).join(",")),
+    ].join("\n");
 
     const blob = new Blob(["\ufeff" + csvContent], {
       type: "text/csv;charset=utf-8;",
     });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `배움나침반_대화기록_${new Date().toISOString().split("T")[0]}.csv`;
+    link.download = `배움나침반_학생${studentNumber}_자료_${new Date().toISOString().split("T")[0]}.csv`;
     link.click();
   };
 
-  // 학생 목록 추출
+  // 대화 삭제 핸들러
+  const handleDelete = async (id: string) => {
+    if (!confirm("정말 이 대화를 삭제하시겠습니까?")) {
+      return;
+    }
+
+    if (onDeleteConversation) {
+      try {
+        await onDeleteConversation(id);
+        alert("대화가 삭제되었습니다.");
+      } catch (error: any) {
+        console.error("삭제 오류:", error);
+        alert(`삭제에 실패했습니다: ${error.message}`);
+      }
+    }
+  };
+
+  // 학생 목록 추출 및 미승인 질문 수 계산
   const students = useMemo(() => {
     const studentSet = new Set<string>();
     conversations.forEach((item: any) => {
@@ -110,6 +164,16 @@ export default function TeacherDashboard({
     });
     return Array.from(studentSet).sort((a, b) => parseInt(a) - parseInt(b));
   }, [conversations]);
+
+  // 각 학생별 미승인 질문 수 계산
+  const getPendingQuestionCount = (studentNumber: string) => {
+    return conversations.filter(
+      (item: any) =>
+        (item.type === "conversation" || !item.type) &&
+        item.student_name === studentNumber &&
+        item.teacher_approved === false
+    ).length;
+  };
 
   // 선택된 학생이 없으면 첫 번째 학생 선택
   useEffect(() => {
@@ -172,43 +236,59 @@ export default function TeacherDashboard({
           <span className="mr-2">👥</span> 학생별 관리
         </h2>
         <div className="flex flex-wrap gap-2 mb-4">
-          {students.map((student) => (
-            <button
-              key={student}
-              onClick={() => setSelectedStudent(student)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                selectedStudent === student
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              학생 {student}
-            </button>
-          ))}
+          {students.map((student) => {
+            const pendingCount = getPendingQuestionCount(student);
+            return (
+              <button
+                key={student}
+                onClick={() => setSelectedStudent(student)}
+                className={`relative px-4 py-2 rounded-lg text-sm font-medium ${
+                  selectedStudent === student
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                학생 {student}
+                {pendingCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    {pendingCount}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
         
         {selectedStudent && (
           <div className="border-t pt-4">
-            <div className="flex space-x-2 mb-4">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => setActiveTab("questions")}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                    activeTab === "questions"
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 text-gray-700"
+                  }`}
+                >
+                  질문 ({studentData.questions.length})
+                </button>
+                <button
+                  onClick={() => setActiveTab("essays")}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                    activeTab === "essays"
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 text-gray-700"
+                  }`}
+                >
+                  글 작성 ({studentData.essays.length})
+                </button>
+              </div>
               <button
-                onClick={() => setActiveTab("questions")}
-                className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                  activeTab === "questions"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-700"
-                }`}
+                onClick={() => exportStudentData(selectedStudent)}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
               >
-                질문 ({studentData.questions.length})
-              </button>
-              <button
-                onClick={() => setActiveTab("essays")}
-                className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                  activeTab === "essays"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-700"
-                }`}
-              >
-                글 작성 ({studentData.essays.length})
+                학생별 자료 내보내기
               </button>
             </div>
 
@@ -223,12 +303,13 @@ export default function TeacherDashboard({
                       <th className="px-4 py-3 text-left font-medium text-gray-700">AI 응답</th>
                       <th className="px-4 py-3 text-left font-medium text-gray-700">위반</th>
                       <th className="px-4 py-3 text-left font-medium text-gray-700">승인</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-700">삭제</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {studentData.questions.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                        <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
                           질문이 없습니다.
                         </td>
                       </tr>
@@ -278,6 +359,17 @@ export default function TeacherDashboard({
                               >
                                 {item.teacher_approved ? "승인됨" : "승인"}
                               </button>
+                            </td>
+                            <td className="px-4 py-3">
+                              {item.id && (
+                                <button
+                                  onClick={() => handleDelete(item.id)}
+                                  className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
+                                  title="대화 삭제"
+                                >
+                                  삭제
+                                </button>
+                              )}
                             </td>
                           </tr>
                         );
@@ -358,13 +450,6 @@ export default function TeacherDashboard({
             <span className="text-sm text-gray-600">
               총 대화 수: <span className="font-semibold">{conversationData.length}</span>
             </span>
-            <button
-              id="export-data"
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
-              onClick={exportData}
-            >
-              대화 내보내기
-            </button>
           </div>
         </div>
         <div className="overflow-x-auto">
@@ -378,12 +463,13 @@ export default function TeacherDashboard({
                 <th className="px-4 py-3 text-left font-medium text-gray-700">질문</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-700">안전성</th>
                 <th className="px-4 py-3 text-left font-medium text-gray-700">승인</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-700">삭제</th>
               </tr>
             </thead>
             <tbody id="conversation-log" className="divide-y divide-gray-200">
               {conversationData.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
                     아직 대화 기록이 없습니다.
                   </td>
                 </tr>
@@ -430,6 +516,17 @@ export default function TeacherDashboard({
                       >
                         {item.teacher_approved ? "승인됨" : "승인"}
                       </button>
+                    </td>
+                    <td className="px-4 py-3">
+                      {item.id && (
+                        <button
+                          onClick={() => handleDelete(item.id)}
+                          className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
+                          title="대화 삭제"
+                        >
+                          삭제
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );
