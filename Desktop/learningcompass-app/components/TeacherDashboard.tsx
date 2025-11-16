@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { Conversation, useFirebase } from "@/hooks/useFirebase";
+import WordCloud, { extractWords } from "@/components/WordCloud";
 
 interface TeacherDashboardProps {
   conversations: Conversation[];
@@ -202,9 +203,31 @@ export default function TeacherDashboard({
     return { questions, essays };
   }, [conversations, selectedStudent]);
 
-  const conversationData = conversations.filter(
-    (item: any) => item.type === "conversation" || !item.type
-  );
+  // 질문 워드 클라우드 데이터 생성
+  const questionWordCloud = useMemo(() => {
+    const questionTexts = conversations
+      .filter((item: any) => (item.type === "conversation" || !item.type) && item.question)
+      .map((item: any) => item.question)
+      .join(" ");
+
+    const wordMap = extractWords(questionTexts, 2);
+    return Array.from(wordMap.entries())
+      .map(([text, value]) => ({ text, value }))
+      .filter((word) => word.value > 0);
+  }, [conversations]);
+
+  // 지식 구성 워드 클라우드 데이터 생성
+  const knowledgeWordCloud = useMemo(() => {
+    const knowledgeTexts = conversations
+      .filter((item: any) => item.type === "knowledge" && item.knowledge_content)
+      .map((item: any) => item.knowledge_content)
+      .join(" ");
+
+    const wordMap = extractWords(knowledgeTexts, 2);
+    return Array.from(wordMap.entries())
+      .map(([text, value]) => ({ text, value }))
+      .filter((word) => word.value > 0);
+  }, [conversations]);
 
   return (
     <>
@@ -440,101 +463,18 @@ export default function TeacherDashboard({
         )}
       </div>
 
-      {/* 전체 대화 기록 (기존) */}
-      <div className="bg-white rounded-xl card-shadow p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-gray-800 flex items-center">
-            <span className="mr-2">📋</span> 전체 대화 기록
-          </h2>
-          <div className="flex items-center space-x-4">
-            <span className="text-sm text-gray-600">
-              총 대화 수: <span className="font-semibold">{conversationData.length}</span>
-            </span>
-          </div>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium text-gray-700">시간</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-700">학생</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-700">과목</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-700">참고자료</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-700">질문</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-700">안전성</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-700">승인</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-700">삭제</th>
-              </tr>
-            </thead>
-            <tbody id="conversation-log" className="divide-y divide-gray-200">
-              {conversationData.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
-                    아직 대화 기록이 없습니다.
-                  </td>
-                </tr>
-              ) : (
-                conversationData.map((item) => {
-                const timestamp =
-                  item.timestamp instanceof Date
-                    ? item.timestamp.toLocaleString("ko-KR")
-                    : new Date((item.timestamp as any).toDate?.() || item.timestamp).toLocaleString("ko-KR");
-                return (
-                  <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-600">{timestamp}</td>
-                    <td className="px-4 py-3 font-medium">
-                      학생 {item.student_name} ({item.grade})
-                    </td>
-                    <td className="px-4 py-3">{item.subject}</td>
-                    <td className="px-4 py-3 max-w-xs truncate" title={item.knowledge_title || "없음"}>
-                      {item.knowledge_title || "없음"}
-                    </td>
-                    <td className="px-4 py-3 max-w-xs truncate" title={item.question}>
-                      {item.question}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`px-2 py-1 text-xs rounded-full ${
-                          item.safety_status === "안전"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        {item.safety_status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <button
-                        onClick={() =>
-                          item.id && handleApprovalToggle(item.id, item.teacher_approved)
-                        }
-                        className={`px-3 py-1 text-xs rounded ${
-                          item.teacher_approved
-                            ? "bg-green-600 text-white"
-                            : "bg-gray-200 text-gray-700"
-                        } hover:opacity-80`}
-                      >
-                        {item.teacher_approved ? "승인됨" : "승인"}
-                      </button>
-                    </td>
-                    <td className="px-4 py-3">
-                      {item.id && (
-                        <button
-                          onClick={() => handleDelete(item.id)}
-                          className="px-3 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
-                          title="대화 삭제"
-                        >
-                          삭제
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+      {/* 워드 클라우드 섹션 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <WordCloud
+          words={questionWordCloud}
+          title="많이 물어보는 질문"
+          maxWords={50}
+        />
+        <WordCloud
+          words={knowledgeWordCloud}
+          title="지식 구성"
+          maxWords={50}
+        />
       </div>
     </>
   );
