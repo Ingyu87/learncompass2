@@ -21,6 +21,23 @@ export default function TeacherDashboard({
   const [activeTab, setActiveTab] = useState<"questions" | "essays">("questions");
   const [mainTab, setMainTab] = useState<"students" | "knowledge">("students");
   const [selectedKnowledge, setSelectedKnowledge] = useState<string | null>(null);
+  const getTimestampMillis = (value: any): number => {
+    if (!value) return 0;
+    if (value instanceof Date) return value.getTime();
+    if (typeof value === "number") return value;
+    if (typeof value === "string") {
+      const parsed = Date.parse(value);
+      return Number.isNaN(parsed) ? 0 : parsed;
+    }
+    if (typeof value === "object") {
+      const toDate = (value as { toDate?: () => Date }).toDate;
+      if (typeof toDate === "function") {
+        const date = toDate.call(value);
+        return date instanceof Date ? date.getTime() : 0;
+      }
+    }
+    return 0;
+  };
   const handleApprovalToggle = async (id: string, currentStatus: boolean) => {
     const conversation = conversations.find((c: any) => c.id === id || c.__backendId === id);
     
@@ -236,9 +253,7 @@ export default function TeacherDashboard({
     const knowledgeTitle = selectedKnowledgeItem.knowledge_title;
     const knowledgeSubject = selectedKnowledgeItem.subject;
     const knowledgeGrade = selectedKnowledgeItem.grade;
-    const knowledgeUploadTime = selectedKnowledgeItem.upload_date
-      ? new Date(selectedKnowledgeItem.upload_date).getTime()
-      : 0;
+    const knowledgeUploadTime = getTimestampMillis(selectedKnowledgeItem.upload_date);
 
     const relatedQuestions = conversations.filter((item: any) => {
       if (!(item.type === "conversation" || !item.type) || !item.question) {
@@ -253,11 +268,7 @@ export default function TeacherDashboard({
       // 같은 과목, 같은 학년인 경우
       if (item.subject === knowledgeSubject && item.grade === knowledgeGrade) {
         // 질문 시간이 지식 업로드 시간 이후인 경우만
-        const questionTime = item.timestamp
-          ? (item.timestamp instanceof Date
-              ? item.timestamp.getTime()
-              : (item.timestamp as any).toDate?.().getTime() || new Date(item.timestamp).getTime())
-          : 0;
+        const questionTime = getTimestampMillis(item.timestamp);
         
         // 지식이 업로드된 이후의 질문만 포함
         return questionTime >= knowledgeUploadTime;
@@ -281,6 +292,10 @@ export default function TeacherDashboard({
       (k: any) => (k.id || k.__backendId) === selectedKnowledge
     );
     if (!selectedKnowledgeItem) return [];
+    const knowledgeObjective =
+      selectedKnowledgeItem.achievement_standard_text ||
+      selectedKnowledgeItem.learning_objective ||
+      "";
 
     const relevantEssays = conversations.filter((item: any) => {
       if (item.type !== "essay" || !item.essay_submitted || !item.student_essay) {
