@@ -225,6 +225,10 @@ export default function TeacherDashboard({
       (k: any) => (k.id || k.__backendId) === selectedKnowledge
     );
     if (!selectedKnowledgeItem) return [];
+    const knowledgeObjective =
+      selectedKnowledgeItem.achievement_standard_text ||
+      selectedKnowledgeItem.learning_objective ||
+      "";
 
     // 해당 지식과 정확히 일치하는 질문들만 필터링
     // 1. 지식 제목이 정확히 일치하는 경우
@@ -269,20 +273,46 @@ export default function TeacherDashboard({
       .filter((word) => word.value > 0);
   }, [conversations, selectedKnowledge, knowledgeList]);
 
-  // 선택된 지식 구성 워드 클라우드 데이터 생성
-  const knowledgeWordCloud = useMemo(() => {
+  // 선택된 지식에 연결된 학생 글 워드 클라우드 데이터 생성
+  const essayWordCloud = useMemo(() => {
     if (!selectedKnowledge) return [];
 
     const selectedKnowledgeItem = knowledgeList.find(
       (k: any) => (k.id || k.__backendId) === selectedKnowledge
     );
-    if (!selectedKnowledgeItem || !selectedKnowledgeItem.knowledge_content) return [];
+    if (!selectedKnowledgeItem) return [];
 
-    const wordMap = extractWords(selectedKnowledgeItem.knowledge_content, 2);
+    const relevantEssays = conversations.filter((item: any) => {
+      if (item.type !== "essay" || !item.essay_submitted || !item.student_essay) {
+        return false;
+      }
+
+      if (item.knowledge_reference_id) {
+        return item.knowledge_reference_id === selectedKnowledge;
+      }
+
+      if (item.knowledge_title && selectedKnowledgeItem.knowledge_title) {
+        return item.knowledge_title === selectedKnowledgeItem.knowledge_title;
+      }
+
+      return (
+        item.subject === selectedKnowledgeItem.subject &&
+        item.grade === selectedKnowledgeItem.grade &&
+        !!knowledgeObjective &&
+        item.learning_objective === knowledgeObjective
+      );
+    });
+
+    if (relevantEssays.length === 0) {
+      return [];
+    }
+
+    const essayTexts = relevantEssays.map((item: any) => item.student_essay || "").join(" ");
+    const wordMap = extractWords(essayTexts, 2);
     return Array.from(wordMap.entries())
       .map(([text, value]) => ({ text, value }))
       .filter((word) => word.value > 0);
-  }, [selectedKnowledge, knowledgeList]);
+  }, [conversations, selectedKnowledge, knowledgeList]);
 
   return (
     <>
@@ -566,12 +596,12 @@ export default function TeacherDashboard({
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <WordCloud
                 words={questionWordCloud}
-                title="많이 물어보는 질문"
+                title="학생 질문 워드 클라우드"
                 maxWords={50}
               />
               <WordCloud
-                words={knowledgeWordCloud}
-                title="지식 구성"
+                words={essayWordCloud}
+                title="학생 글 워드 클라우드"
                 maxWords={50}
               />
             </div>

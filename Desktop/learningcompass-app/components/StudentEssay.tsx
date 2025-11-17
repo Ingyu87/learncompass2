@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useFirebase } from "@/hooks/useFirebase";
 import html2canvas from "html2canvas";
 
@@ -10,6 +10,8 @@ interface StudentEssayProps {
   subject: string;
   learningObjective: string;
   conversations: any[];
+  selectedKnowledgeId?: string;
+  selectedKnowledgeTitle?: string;
 }
 
 export default function StudentEssay({
@@ -18,6 +20,8 @@ export default function StudentEssay({
   subject,
   learningObjective,
   conversations,
+  selectedKnowledgeId,
+  selectedKnowledgeTitle,
 }: StudentEssayProps) {
   const { addConversation, updateConversation } = useFirebase();
   const [essay, setEssay] = useState("");
@@ -29,20 +33,58 @@ export default function StudentEssay({
   const lastPasteTime = useRef<number>(0);
   const lastKeyTime = useRef<number>(0);
 
-  // 기존 제출한 글 확인
+  const matchesSelectedKnowledge = useCallback(
+    (c: any) => {
+      if (!selectedKnowledgeId && !selectedKnowledgeTitle) {
+        return true;
+      }
+
+      if (selectedKnowledgeId) {
+        if (c.knowledge_reference_id === selectedKnowledgeId) {
+          return true;
+        }
+        if (!c.knowledge_reference_id && selectedKnowledgeTitle && c.knowledge_title === selectedKnowledgeTitle) {
+          return true;
+        }
+        return false;
+      }
+
+      if (selectedKnowledgeTitle) {
+        return c.knowledge_title === selectedKnowledgeTitle;
+      }
+
+      return false;
+    },
+    [selectedKnowledgeId, selectedKnowledgeTitle]
+  );
+
+  // 기존 제출한 글 확인 (지식별로 구분)
   useEffect(() => {
+    if (!studentNumber) {
+      setEssay("");
+      setMindmapData(null);
+      setViolationLogs([]);
+      return;
+    }
+
     const existingEssay = conversations.find(
       (c: any) =>
         c.type === "essay" &&
         c.student_name === studentNumber &&
-        c.essay_submitted === true
+        c.essay_submitted === true &&
+        matchesSelectedKnowledge(c)
     );
+
     if (existingEssay) {
       setEssay(existingEssay.student_essay || "");
       setMindmapData(existingEssay.mindmap_data || null);
       setViolationLogs(existingEssay.violation_logs || []);
+    } else {
+      setEssay("");
+      setMindmapData(null);
+      setViolationLogs([]);
     }
-  }, [conversations, studentNumber]);
+  }, [conversations, studentNumber, matchesSelectedKnowledge]);
 
   // 복사/붙여넣기 차단
   useEffect(() => {
@@ -299,7 +341,8 @@ export default function StudentEssay({
         (c: any) =>
           c.type === "essay" &&
           c.student_name === studentNumber &&
-          c.essay_submitted === true
+          c.essay_submitted === true &&
+          matchesSelectedKnowledge(c)
       );
 
       const essayData = {
@@ -318,6 +361,8 @@ export default function StudentEssay({
         question: "",
         ai_response: "",
         safety_status: "안전",
+        knowledge_reference_id: selectedKnowledgeId || "",
+        knowledge_title: selectedKnowledgeTitle || "",
       };
 
       if (existingEssay && existingEssay.id) {
@@ -407,6 +452,14 @@ export default function StudentEssay({
           </div>
         </div>
 
+        <button
+          onClick={handleSubmit}
+          disabled={isSubmitting || essay.trim().length < 50}
+          className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+        >
+          {isSubmitting ? "제출 중..." : "제출하기"}
+        </button>
+
         {mindmapData && (
           <div className="mt-6">
             <div className="flex items-center justify-between mb-3">
@@ -427,14 +480,6 @@ export default function StudentEssay({
             </div>
           </div>
         )}
-
-        <button
-          onClick={handleSubmit}
-          disabled={isSubmitting || essay.trim().length < 50}
-          className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
-        >
-          {isSubmitting ? "제출 중..." : "제출하기"}
-        </button>
       </div>
     </div>
   );

@@ -23,12 +23,29 @@ export default function WordCloud({ words, title, maxWords = 50 }: WordCloudProp
     const maxValue = sorted[0].value;
     const minValue = sorted[sorted.length - 1].value;
     const range = maxValue - minValue || 1;
+    const minFont = 16;
+    const maxFont = 48;
+    const colorPalette = ["#0f766e", "#2563eb", "#7c3aed", "#db2777", "#ea580c"];
 
-    // 폰트 크기 계산 (14px ~ 32px)
-    return sorted.map((word) => ({
-      ...word,
-      fontSize: 14 + ((word.value - minValue) / range) * 18,
-    }));
+    // 폰트 크기/색상 계산
+    return sorted.map((word, idx) => {
+      const normalized = (word.value - minValue) / range;
+      const fontSize = minFont + normalized * (maxFont - minFont);
+      const paletteIndex = Math.min(
+        colorPalette.length - 1,
+        Math.floor(normalized * colorPalette.length)
+      );
+      const color = colorPalette[paletteIndex];
+      const fontWeight = normalized > 0.7 ? 800 : normalized > 0.4 ? 700 : 600;
+
+      return {
+        ...word,
+        fontSize,
+        color,
+        fontWeight,
+        shadowOpacity: 0.15 + normalized * 0.2,
+      };
+    });
   }, [words, maxWords]);
 
   if (processedWords.length === 0) {
@@ -42,17 +59,18 @@ export default function WordCloud({ words, title, maxWords = 50 }: WordCloudProp
   return (
     <div className="bg-white rounded-xl card-shadow p-6">
       <h3 className="text-lg font-bold text-gray-800 mb-4">{title}</h3>
-      <div className="flex flex-wrap gap-2 items-center" style={{ transform: 'none' }}>
+      <div className="flex flex-wrap gap-2 items-start">
         {processedWords.map((word, idx) => (
           <span
             key={`${word.text}-${idx}`}
-            className="inline-block px-3 py-1.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 transition-all cursor-pointer"
+            className="inline-block px-3 py-1.5 rounded-lg border transition-transform duration-200 cursor-pointer"
             style={{
               fontSize: `${word.fontSize}px`,
-              fontWeight: word.value > 3 ? "bold" : "normal",
-              transform: 'none',
-              rotate: '0deg',
-              position: 'relative',
+              fontWeight: word.fontWeight,
+              color: word.color,
+              backgroundColor: `${word.color}1a`,
+              borderColor: `${word.color}4d`,
+              boxShadow: `0 4px 12px rgba(15, 23, 42, ${word.shadowOpacity})`,
             }}
             title={`${word.text}: ${word.value}회`}
           >

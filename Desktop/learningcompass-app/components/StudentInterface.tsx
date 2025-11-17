@@ -145,6 +145,8 @@ export default function StudentInterface() {
           subject={learningConfig.subject}
           learningObjective={learningConfig.learningObjective}
           conversations={conversations}
+          selectedKnowledgeId={selectedKnowledge?.id || selectedKnowledge?.__backendId || ""}
+          selectedKnowledgeTitle={selectedKnowledge?.knowledge_title || ""}
         />
       </div>
     </div>

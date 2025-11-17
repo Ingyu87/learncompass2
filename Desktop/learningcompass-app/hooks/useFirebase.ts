@@ -48,6 +48,7 @@ export interface Conversation {
   mindmap_data?: any; // 마인드맵 데이터 (JSON)
   essay_submitted?: boolean; // 글 제출 여부
   essay_timestamp?: Date | Timestamp; // 글 작성 시간
+  knowledge_reference_id?: string; // 연결된 지식 ID
   // 복사/비속어 감지 로그
   violation_logs?: Array<{
     type: "copy_paste" | "profanity";
