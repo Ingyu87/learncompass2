@@ -1,0 +1,213 @@
+import { NextRequest, NextResponse } from "next/server";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { getStandardsBySubjectGradeAndArea, isGradeInRange, type CurriculumStandard } from "@/lib/curriculum";
+import { readFile } from "fs/promises";
+import { join } from "path";
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { content, grade, subject } = body;
+
+    if (!content || !grade || !subject) {
+      return NextResponse.json(
+        { error: "필수 파라미터가 누락되었습니다." },
+        { status: 400 }
+      );
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+    
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: "Gemini API 키가 설정되지 않았습니다." },
+        { status: 500 }
+      );
+    }
+
+    // 성취기준 데이터 로드 (서버 사이드)
+    let curriculumData: CurriculumStandard[] = [];
+    try {
+      const filePath = join(process.cwd(), "public", "data", "curriculum-standards.json");
+      const fileContents = await readFile(filePath, "utf-8");
+      curriculumData = JSON.parse(fileContents) as CurriculumStandard[];
+    } catch (error) {
+      console.error("성취기준 데이터 파일 읽기 오류:", error);
+      return NextResponse.json(
+        { error: "성취기준 데이터를 불러올 수 없습니다." },
+        { status: 500 }
+      );
+    }
+
+    // 교사가 선택한 교과와 학년에 맞는 성취기준 필터링
+    const normalizeSubject = (s: string) => s.trim().replace(/\s+/g, "");
+    const normalizedSubject = normalizeSubject(subject);
+    
+    const standards = curriculumData.filter((item) => {
+      const matchesSubject = normalizeSubject(item.교과) === normalizedSubject;
+      const matchesGrade = isGradeInRange(grade, item.학년);
+      return matchesSubject && matchesGrade;
+    });
+    
+    if (standards.length === 0) {
+      return NextResponse.json(
+        { error: `해당 학년(${grade})/과목(${subject})에 대한 성취기준을 찾을 수 없습니다.` },
+        { status: 404 }
+      );
+    }
+
+    // 성취기준 목록을 문자열로 변환
+    const standardsText = standards
+      .map((s, idx) => `${idx + 1}. [${s.영역}] ${s.성취기준}`)
+      .join("\n");
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    // 사용 가능한 모델 시도 (우선순위: 2.5-flash -> 1.5-flash -> pro)
+    const models = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-pro"];
+
+    // 1단계: 성취기준 분석 (교사가 선택한 교과의 성취기준 중에서 찾기)
+    const analysisPrompt = `당신은 초등학교 교육과정 전문가입니다.
+
+학년: ${grade}
+과목: ${subject}
+
+다음은 해당 학년/과목의 성취기준 목록입니다:
+${standardsText}
+
+다음 학습 내용을 분석하여 가장 적합한 성취기준을 찾아주세요:
+
+${content}
+
+응답 형식 (JSON):
+{
+  "achievement_standard": "가장 적합한 성취기준 코드 (예: [4사02-02])",
+  "achievement_standard_text": "성취기준 전체 텍스트",
+  "area": "영역명",
+  "explanation": "왜 이 성취기준이 적합한지 간단한 설명"
+}`;
+
+    // 사용 가능한 모델로 시도
+    let analysisResult;
+    let analysisResponse;
+    for (const modelName of models) {
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName });
+        analysisResult = await model.generateContent(analysisPrompt);
+        analysisResponse = await analysisResult.response;
+        break; // 성공하면 루프 종료
+      } catch (error: any) {
+        // 모델을 찾을 수 없으면 다음 모델 시도
+        if (error?.message?.includes("not found") || error?.message?.includes("404")) {
+          console.log(`모델 ${modelName}을 사용할 수 없습니다. 다음 모델을 시도합니다.`);
+          continue;
+        }
+        // 다른 에러면 재throw
+        throw error;
+      }
+    }
+    
+    if (!analysisResponse) {
+      throw new Error("사용 가능한 Gemini 모델을 찾을 수 없습니다.");
+    }
+    let analysisData;
+    
+    try {
+      // JSON 추출
+      const text = analysisResponse.text();
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        analysisData = JSON.parse(jsonMatch[0]);
+      } else {
+        throw new Error("JSON 형식을 찾을 수 없습니다.");
+      }
+    } catch (error) {
+      console.error("JSON 파싱 오류:", error);
+      // 기본값 사용
+      analysisData = {
+        achievement_standard: standards[0].성취기준,
+        achievement_standard_text: standards[0].성취기준,
+        area: standards[0].영역,
+        explanation: "자동 분석 결과",
+      };
+    }
+
+    // 2단계: 평가 루브릭 생성
+    const rubricPrompt = `당신은 초등학교 평가 전문가입니다.
+
+학년: ${grade}
+과목: ${subject}
+성취기준: ${analysisData.achievement_standard_text}
+
+위 성취기준에 맞는 평가 루브릭을 상/중/하 3단계로 작성해주세요.
+각 단계는 한 문장으로 간결하게 작성해주세요.
+
+응답 형식 (JSON):
+{
+  "rubric": {
+    "high": "상 수준 평가 기준 한 문장",
+    "medium": "중 수준 평가 기준 한 문장",
+    "low": "하 수준 평가 기준 한 문장"
+  }
+}`;
+
+    // 사용 가능한 모델로 시도
+    let rubricResult;
+    let rubricResponse;
+    for (const modelName of models) {
+      try {
+        const model = genAI.getGenerativeModel({ model: modelName });
+        rubricResult = await model.generateContent(rubricPrompt);
+        rubricResponse = await rubricResult.response;
+        break; // 성공하면 루프 종료
+      } catch (error: any) {
+        // 모델을 찾을 수 없으면 다음 모델 시도
+        if (error?.message?.includes("not found") || error?.message?.includes("404")) {
+          console.log(`모델 ${modelName}을 사용할 수 없습니다. 다음 모델을 시도합니다.`);
+          continue;
+        }
+        // 다른 에러면 재throw
+        throw error;
+      }
+    }
+    
+    if (!rubricResponse) {
+      throw new Error("사용 가능한 Gemini 모델을 찾을 수 없습니다.");
+    }
+    let rubricData;
+    
+    try {
+      const text = rubricResponse.text();
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        rubricData = JSON.parse(jsonMatch[0]);
+      } else {
+        throw new Error("JSON 형식을 찾을 수 없습니다.");
+      }
+    } catch (error) {
+      console.error("루브릭 JSON 파싱 오류:", error);
+      // 기본 루브릭
+      rubricData = {
+        rubric: {
+          high: "상 수준: 성취기준을 완전히 이해하고 적용할 수 있음",
+          medium: "중 수준: 성취기준을 부분적으로 이해하고 적용할 수 있음",
+          low: "하 수준: 성취기준을 이해하는 데 어려움이 있음",
+        },
+      };
+    }
+
+    return NextResponse.json({
+      achievement_standard: analysisData.achievement_standard,
+      achievement_standard_text: analysisData.achievement_standard_text,
+      area: analysisData.area,
+      explanation: analysisData.explanation,
+      rubric: rubricData.rubric,
+    });
+  } catch (error: any) {
+    console.error("지식 분석 오류:", error);
+    return NextResponse.json(
+      { error: error.message || "지식 분석 중 오류가 발생했습니다." },
+      { status: 500 }
+    );
+  }
+}
+

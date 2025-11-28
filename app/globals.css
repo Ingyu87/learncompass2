@@ -1,0 +1,113 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  box-sizing: border-box;
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+}
+
+.gradient-bg {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.card-shadow {
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.safety-indicator {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* 모바일 반응형 스타일 */
+@media (max-width: 640px) {
+  /* 모바일 폰트 크기 조정 */
+  html {
+    font-size: 14px;
+  }
+
+  /* 모바일에서 테이블 스크롤 */
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 모바일 버튼 터치 영역 최소 크기 */
+  button, 
+  [role="button"],
+  input[type="button"],
+  input[type="submit"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* 모바일 입력 필드 크기 */
+  input, 
+  select, 
+  textarea {
+    font-size: 16px !important; /* iOS 줌 방지 */
+  }
+
+  /* 모바일 카드 패딩 조정 */
+  .card-shadow {
+    padding: 1rem;
+  }
+
+  /* 모바일에서 탭 버튼 터치 친화적으로 */
+  .tab-button {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+  }
+}
+
+/* 태블릿 반응형 스타일 */
+@media (min-width: 641px) and (max-width: 1024px) {
+  html {
+    font-size: 15px;
+  }
+}
+
+/* 터치 디바이스 호버 효과 제거 */
+@media (hover: none) and (pointer: coarse) {
+  button:hover,
+  a:hover {
+    opacity: 1;
+  }
+}
+
+/* 스크롤바 스타일 (모바일 제외) */
+@media (min-width: 641px) {
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
+  }
+}
+
+
