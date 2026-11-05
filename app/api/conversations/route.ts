@@ -94,8 +94,8 @@ async function checkTeacherLock(db: FirebaseFirestore.Firestore) {
 
 const actions: Record<string, (db: FirebaseFirestore.Firestore, body: any, req: NextRequest) => Promise<unknown>> = {
   async listPublic(db) {
-    const snap = await db.collection("conversations").where("type", "==", "knowledge").where("selected", "==", true).limit(20).get();
-    return { conversations: snap.docs.map((d) => serialize(d.id, d.data())) };
+    const snap = await db.collection("conversations").where("type", "==", "knowledge").limit(100).get();
+    return { conversations: snap.docs.filter((d) => d.get("selected") === true).map((d) => serialize(d.id, d.data())) };
   },
 
   async getMine(db, body) {
@@ -182,8 +182,10 @@ const actions: Record<string, (db: FirebaseFirestore.Firestore, body: any, req: 
 
   async teacherList(db, _body, req) {
     verifyTeacherToken(req);
-    const snap = await db.collection("conversations").orderBy("timestamp", "desc").limit(999).get();
-    return { conversations: snap.docs.map((d) => serialize(d.id, d.data())) };
+    const snap = await db.collection("conversations").limit(999).get();
+    const conversations = snap.docs.map((d) => serialize(d.id, d.data()));
+    conversations.sort((a: any, b: any) => String(b.timestamp || "").localeCompare(String(a.timestamp || "")));
+    return { conversations };
   },
 
   async teacherUpdate(db, body, req) {
