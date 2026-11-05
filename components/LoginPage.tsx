@@ -2,25 +2,43 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { teacherLogin } from "@/hooks/useFirebase";
 
 export default function LoginPage() {
   const router = useRouter();
   const [selectedRole, setSelectedRole] = useState<"student" | "teacher" | null>(null);
   const [name, setName] = useState("");
+  const [teacherCode, setTeacherCode] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!selectedRole || !name.trim()) {
       alert("역할과 이름을 모두 입력해주세요.");
       return;
     }
+    setError("");
+    if (selectedRole === "teacher") {
+      if (!teacherCode.trim()) {
+        setError("교사 비밀번호를 입력해주세요.");
+        return;
+      }
+      setLoading(true);
+      try {
+        await teacherLogin(teacherCode);
+      } catch (err: any) {
+        setError(err.message || "비밀번호가 올바르지 않습니다.");
+        setLoading(false);
+        return;
+      }
+      setLoading(false);
+    }
 
-    // 간단한 세션 스토리지에 저장 (실제로는 더 안전한 인증 필요)
     if (typeof window !== "undefined") {
       sessionStorage.setItem("userRole", selectedRole);
       sessionStorage.setItem("userName", name);
     }
 
-    // 역할에 따라 페이지 이동
     if (selectedRole === "student") {
       router.push("/student");
     } else {
@@ -100,10 +118,29 @@ export default function LoginPage() {
             />
           </div>
 
+          {selectedRole === "teacher" && (
+            <div>
+              <label htmlFor="teacher-code" className="block text-sm font-medium text-gray-700 mb-2">
+                교사 비밀번호
+              </label>
+              <input
+                type="password"
+                id="teacher-code"
+                value={teacherCode}
+                onChange={(e) => setTeacherCode(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="교사 비밀번호를 입력하세요"
+              />
+            </div>
+          )}
+          {error && (
+            <div className="p-2 bg-red-50 border border-red-200 rounded text-sm text-red-700">{error}</div>
+          )}
+
           {/* 로그인 버튼 */}
           <button
             onClick={handleLogin}
-            disabled={!selectedRole || !name.trim()}
+            disabled={!selectedRole || !name.trim() || loading}
             className={`w-full py-2.5 sm:py-3 rounded-lg font-semibold transition-colors text-sm sm:text-base ${
               selectedRole && name.trim()
                 ? selectedRole === "student"

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { teacherLogin } from "@/hooks/useFirebase";
 
 interface TeacherLoginProps {
   onLogin: () => void;
@@ -9,16 +10,19 @@ interface TeacherLoginProps {
 export default function TeacherLogin({ onLogin }: TeacherLoginProps) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // 비밀번호만 확인
-    if (password === "2025") {
-      setError("");
+    setError("");
+    setLoading(true);
+    try {
+      await teacherLogin(password);
       onLogin();
-    } else {
-      setError("비밀번호가 올바르지 않습니다.");
+    } catch (err: any) {
+      setError(err.message || "비밀번호가 올바르지 않습니다.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -51,9 +55,10 @@ export default function TeacherLogin({ onLogin }: TeacherLoginProps) {
         </div>
         <button
           type="submit"
-          className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+          disabled={loading}
+          className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium disabled:opacity-60"
         >
-          로그인
+          {loading ? "확인 중..." : "로그인"}
         </button>
         {error && (
           <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-700">
@@ -64,5 +69,3 @@ export default function TeacherLogin({ onLogin }: TeacherLoginProps) {
     </div>
   );
 }
-
-

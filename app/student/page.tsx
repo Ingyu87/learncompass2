@@ -9,7 +9,6 @@ import { useFirebase } from "@/hooks/useFirebase";
 
 export default function StudentPage() {
   const router = useRouter();
-  const { conversations, addConversation, updateConversation } = useFirebase();
   const [learningConfig, setLearningConfig] = useState({
     studentNumber: "",
     grade: "",
@@ -32,6 +31,8 @@ export default function StudentPage() {
       }
     }
   }, [router]);
+
+  const { conversations, addConversation, updateConversation } = useFirebase({ studentName: learningConfig.studentNumber });
 
   return (
     <div className="min-h-full">

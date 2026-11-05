@@ -4,17 +4,18 @@ import { useState } from "react";
 import TeacherLogin from "@/components/TeacherLogin";
 import TeacherDashboard from "@/components/TeacherDashboard";
 import KnowledgeManagement from "@/components/KnowledgeManagement";
-import { useFirebase } from "@/hooks/useFirebase";
+import { useFirebase, clearTeacherToken, getTeacherToken } from "@/hooks/useFirebase";
 
 export default function TeacherInterface() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const { conversations, updateConversation, deleteConversation } = useFirebase();
+  const [isLoggedIn, setIsLoggedIn] = useState(() => !!getTeacherToken());
+  const { conversations, updateConversation, deleteConversation } = useFirebase({ teacher: isLoggedIn });
 
   const handleLogin = () => {
     setIsLoggedIn(true);
   };
 
   const handleLogout = () => {
+    clearTeacherToken();
     setIsLoggedIn(false);
   };
 

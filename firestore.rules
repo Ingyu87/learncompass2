@@ -1,10 +1,10 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /conversations/{conversationId} {
-      allow read, write: if true;
+    // 학생 글·대화는 클라이언트 SDK로 읽거나 쓰지 않습니다.
+    // 모든 접근은 /api/conversations (Admin SDK) 를 통합니다.
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
-
-

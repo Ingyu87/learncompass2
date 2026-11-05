@@ -6,13 +6,13 @@ import StudentEssay from "@/components/StudentEssay";
 import { useFirebase } from "@/hooks/useFirebase";
 
 export default function StudentInterface() {
-  const { conversations, addConversation } = useFirebase();
   const [learningConfig, setLearningConfig] = useState({
     studentNumber: "",
     grade: "",
     subject: "",
     learningObjective: "",
   });
+  const { conversations, addConversation } = useFirebase({ studentName: learningConfig.studentNumber });
 
   // 교사가 선택한 지식 찾기
   const knowledgeData = conversations.filter((item: any) => item.type === "knowledge");

@@ -4,17 +4,17 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import TeacherDashboard from "@/components/TeacherDashboard";
-import { useFirebase } from "@/hooks/useFirebase";
+import { useFirebase, getTeacherToken, clearTeacherToken } from "@/hooks/useFirebase";
 
 export default function TeacherPage() {
   const router = useRouter();
-  const { conversations, updateConversation, deleteConversation } = useFirebase();
+  const { conversations, updateConversation, deleteConversation } = useFirebase({ teacher: true });
 
   useEffect(() => {
     // 로그인 확인
     if (typeof window !== "undefined") {
       const userRole = sessionStorage.getItem("userRole");
-      if (userRole !== "teacher") {
+      if (userRole !== "teacher" || !getTeacherToken()) {
         router.push("/login");
         return;
       }
@@ -33,6 +33,7 @@ export default function TeacherPage() {
     if (typeof window !== "undefined") {
       sessionStorage.removeItem("userRole");
       sessionStorage.removeItem("userName");
+      clearTeacherToken();
       router.push("/login");
     }
   };
